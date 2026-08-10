@@ -1,0 +1,53 @@
+# 缘桥 —— 本地/服务器 开发依赖（MySQL + Redis）
+# 起：docker compose up -d      停：docker compose down
+# 数据落在具名卷里，down 不会丢；要清库用 down -v
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: yuanqiao-mysql
+    restart: unless-stopped
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+08:00
+      # 匹配引擎里有 ORDER BY 表达式 + 分页，放宽一点 sort buffer
+      - --sort_buffer_size=4M
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_dev_pwd}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-yuanqiao}
+      MYSQL_USER: ${MYSQL_USER:-yuanqiao}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-yuanqiao_dev_pwd}
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD:-root_dev_pwd}"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    container_name: yuanqiao-redis
+    restart: unless-stopped
+    command: >
+      sh -c 'if [ -n "$$REDIS_PASSWORD" ];
+             then redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD";
+             else redis-server --appendonly yes; fi'
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  mysql_data:
+  redis_data:

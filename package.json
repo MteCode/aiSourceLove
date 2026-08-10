@@ -1,0 +1,30 @@
+{
+  "name": "yuanqiao",
+  "version": "0.1.0",
+  "private": true,
+  "description": "缘桥 — 相亲/婚恋撮合平台",
+  "workspaces": [
+    "packages/*",
+    "apps/server",
+    "apps/admin"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build:shared": "npm run build -w @yuanqiao/shared",
+    "build:server": "npm run build -w @yuanqiao/server",
+    "build:admin": "npm run build -w @yuanqiao/admin",
+    "build": "npm run build:shared && npm run build:server && npm run build:admin",
+    "dev:server": "npm run dev -w @yuanqiao/server",
+    "dev:admin": "npm run dev -w @yuanqiao/admin",
+    "typecheck": "npm run typecheck -w @yuanqiao/shared && npm run typecheck -w @yuanqiao/server && npm run typecheck -w @yuanqiao/admin",
+    "db:generate": "npm run db:generate -w @yuanqiao/server",
+    "db:push": "npm run db:push -w @yuanqiao/server",
+    "db:migrate": "npm run db:migrate -w @yuanqiao/server",
+    "db:seed": "npm run db:seed -w @yuanqiao/server",
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down",
+    "infra:logs": "docker compose logs -f"
+  }
+}

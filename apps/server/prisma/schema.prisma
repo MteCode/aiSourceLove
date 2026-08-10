@@ -1,0 +1,1003 @@
+// 缘桥 数据模型
+//
+// 约定：
+//  1. 所有金额字段单位为「分」(Int)，不用 Float，不用 Decimal——避免浮点误差和跨语言精度问题。
+//  2. 所有枚举必须与 packages/shared/src/enums.ts 逐字一致。
+//  3. 高频过滤字段走 Profile 固定列（可建索引），低频扩展字段走 ProfileFieldValue（EAV）。
+//     纯 EAV 在婚恋场景会被"性别+年龄+城市"这种组合查询打死，必须混合。
+//  4. 软删除统一用 deletedAt，查询处处要带；只有日志类表硬删。
+
+generator client {
+  provider      = "prisma-client-js"
+  // native = 本机开发(mac arm64)；debian-openssl-3.0.x = 服务器 Ubuntu 22.04
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ═══════════════════════════════════════════════
+//  枚举
+// ═══════════════════════════════════════════════
+
+enum UserStatus {
+  ACTIVE
+  BANNED
+  DEACTIVATED
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum MaritalStatus {
+  SINGLE
+  DIVORCED
+  WIDOWED
+}
+
+enum ChildrenStatus {
+  NONE
+  WITH_SELF
+  WITH_OTHER
+}
+
+enum Education {
+  HIGH_SCHOOL
+  JUNIOR_COLLEGE
+  BACHELOR
+  MASTER
+  DOCTOR
+}
+
+enum HouseStatus {
+  NONE
+  MORTGAGE
+  FULL_PAID
+}
+
+enum CarStatus {
+  NONE
+  MORTGAGE
+  FULL_PAID
+}
+
+enum FieldType {
+  TEXT
+  TEXTAREA
+  NUMBER
+  SELECT
+  MULTI_SELECT
+  DATE
+  REGION
+  BOOLEAN
+  IMAGE
+  IMAGES
+  RANGE
+}
+
+enum ProfileStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  REJECTED
+  OFFLINE
+}
+
+enum AuditStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ProfileSource {
+  SELF
+  MATCHMAKER
+  IMPORT
+}
+
+enum IntroductionStatus {
+  INITIATED
+  RECOMMENDED
+  PARTIALLY_AGREED
+  BOTH_AGREED
+  CONTACT_EXCHANGED
+  MET
+  SUCCESS
+  FAILED
+  CANCELLED
+}
+
+enum MatchmakerStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+}
+
+enum CommissionSource {
+  ORDER
+  INTRO_SUCCESS
+  MANUAL
+}
+
+enum CommissionStatus {
+  PENDING
+  SETTLED
+  WITHDRAWN
+  CANCELLED
+}
+
+enum WithdrawalStatus {
+  PENDING
+  APPROVED
+  PAID
+  REJECTED
+}
+
+enum UnlockSource {
+  BENEFIT
+  INTRODUCTION
+  ADMIN
+}
+
+enum BenefitCode {
+  VIEW_PROFILE
+  UNLOCK_CONTACT
+  TOP_EXPOSURE
+  AI_MATCH
+  SEE_VISITORS
+  ADVANCED_FILTER
+}
+
+enum ResetCycle {
+  NONE
+  DAILY
+  MONTHLY
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  CLOSED
+  REFUNDING
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+enum PayChannel {
+  MOCK
+  WECHAT
+  ALIPAY
+}
+
+enum ReconcileResult {
+  MATCHED
+  MISSING_LOCAL
+  MISSING_REMOTE
+  AMOUNT_MISMATCH
+}
+
+// ═══════════════════════════════════════════════
+//  系统层：账号 / RBAC / 字典 / 日志
+// ═══════════════════════════════════════════════
+
+model User {
+  id           String     @id @default(cuid())
+  phone        String     @unique @db.VarChar(20)
+  passwordHash String?    @db.VarChar(120)
+  nickname     String?    @db.VarChar(50)
+  avatar       String?    @db.VarChar(500)
+  status       UserStatus @default(ACTIVE)
+
+  // 微信小程序
+  wxOpenid  String? @unique @db.VarChar(64)
+  wxUnionid String? @db.VarChar(64)
+
+  // VIP 状态冗余在这里，避免每次鉴权都去 join 订单表
+  isVip       Boolean   @default(false)
+  vipExpireAt DateTime?
+
+  /// 注册时的邀请红娘。此刻还没建档案，先挂在用户上；
+  /// 建档案时转写到 Profile.matchmakerId。丢了就等于红娘白拉人头，所以必须落库不能放 Redis。
+  inviteMatchmakerId String? @db.VarChar(30)
+
+  lastLoginAt DateTime?
+  lastLoginIp String?   @db.VarChar(64)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  roles          UserRole[]
+  profile        Profile?
+  matchmaker     Matchmaker?
+  orders         Order[]
+  benefitGrants  BenefitGrant[]
+  benefitUsages  BenefitUsage[]
+  consumeLogs    BenefitConsumeLog[]
+  unlocks        ContactUnlock[]     @relation("UnlockViewer")
+  views          ProfileView[]       @relation("ViewVisitor")
+  operationLogs  OperationLog[]
+
+  @@index([status, deletedAt])
+  @@index([vipExpireAt])
+  @@map("sys_user")
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  code        String   @unique @db.VarChar(50)
+  name        String   @db.VarChar(50)
+  description String?  @db.VarChar(200)
+  /// 内置角色不可删除
+  isBuiltin   Boolean  @default(false)
+  sort        Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  users       UserRole[]
+  permissions RolePermission[]
+
+  @@map("sys_role")
+}
+
+model Permission {
+  id     String @id @default(cuid())
+  /// 权限点编码，如 profile:audit、order:refund
+  code   String @unique @db.VarChar(80)
+  name   String @db.VarChar(80)
+  /// 归属模块，后台权限树按它分组
+  module String @db.VarChar(50)
+  sort   Int    @default(0)
+
+  roles RolePermission[]
+
+  @@index([module])
+  @@map("sys_permission")
+}
+
+model UserRole {
+  userId String
+  roleId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@index([roleId])
+  @@map("sys_user_role")
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@index([permissionId])
+  @@map("sys_role_permission")
+}
+
+/// 通用字典（驳回理由模板、职业分类这类），与动态表单字段字典分开
+model DictType {
+  id        String     @id @default(cuid())
+  code      String     @unique @db.VarChar(50)
+  name      String     @db.VarChar(50)
+  remark    String?    @db.VarChar(200)
+  createdAt DateTime   @default(now())
+  items     DictItem[]
+
+  @@map("sys_dict_type")
+}
+
+model DictItem {
+  id       String   @id @default(cuid())
+  typeId   String
+  type     DictType @relation(fields: [typeId], references: [id], onDelete: Cascade)
+  value    String   @db.VarChar(100)
+  label    String   @db.VarChar(100)
+  sort     Int      @default(0)
+  enabled  Boolean  @default(true)
+  extra    Json?
+
+  @@unique([typeId, value])
+  @@map("sys_dict_item")
+}
+
+model OperationLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  username  String?  @db.VarChar(50)
+  module    String   @db.VarChar(50)
+  action    String   @db.VarChar(100)
+  method    String   @db.VarChar(10)
+  path      String   @db.VarChar(200)
+  params    Json?
+  ip        String?  @db.VarChar(64)
+  userAgent String?  @db.VarChar(300)
+  /// 耗时毫秒
+  duration  Int      @default(0)
+  success   Boolean  @default(true)
+  error     String?  @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([module, createdAt])
+  @@index([createdAt])
+  @@map("sys_operation_log")
+}
+
+/// 省市区。只 seed 了省份 + 主要城市，够 MVP 用；
+/// 要全量三级请导入民政部行政区划数据到这张表，结构不用改。
+model Region {
+  /// 行政区划代码 adcode
+  code     String  @id @db.VarChar(12)
+  name     String  @db.VarChar(50)
+  /// 1=省 2=市 3=区县
+  level    Int
+  parentCode String? @db.VarChar(12)
+  lat      Float?
+  lng      Float?
+  sort     Int     @default(0)
+
+  @@index([parentCode])
+  @@index([level])
+  @@map("sys_region")
+}
+
+// ═══════════════════════════════════════════════
+//  模块1：录入系统（动态字段字典 + 档案 + 审核）
+// ═══════════════════════════════════════════════
+
+model FieldGroup {
+  id      String     @id @default(cuid())
+  code    String     @unique @db.VarChar(50)
+  name    String     @db.VarChar(50)
+  sort    Int        @default(0)
+  enabled Boolean    @default(true)
+  fields  FieldDef[]
+
+  @@map("biz_field_group")
+}
+
+/// 字段定义 —— 动态表单的核心。
+/// 运营在后台加一个字段，小程序表单和后台录入页自动多出一个输入框，不用发版。
+model FieldDef {
+  id      String     @id @default(cuid())
+  code    String     @unique @db.VarChar(50)
+  label   String     @db.VarChar(50)
+  type    FieldType
+  groupId String
+  group   FieldGroup @relation(fields: [groupId], references: [id], onDelete: Restrict)
+
+  /// SELECT/MULTI_SELECT 的选项：[{value,label,score?}]
+  options     Json?
+  placeholder String? @db.VarChar(100)
+  helpText    String? @db.VarChar(200)
+  required    Boolean @default(false)
+
+  /// 可见等级 0=公开 1=会员 2=VIP 3=解锁后 4=红娘 5=管理员
+  visibility Int @default(1)
+
+  /// true = 映射到 Profile 固定列（能建索引，参与硬过滤）
+  /// false = 存 ProfileFieldValue（EAV），加字段不用改表
+  isCore Boolean @default(false)
+  /// 是否同时出现在"择偶要求"表单里
+  isPreference Boolean @default(false)
+  /// 参与 L2 打分时对应的权重键，见 shared/constants DEFAULT_MATCH_WEIGHTS
+  weightKey String? @db.VarChar(30)
+
+  minValue  Float?
+  maxValue  Float?
+  maxLength Int?
+  regex     String? @db.VarChar(200)
+
+  sort    Int     @default(0)
+  enabled Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  values ProfileFieldValue[]
+
+  @@index([groupId, sort])
+  @@index([enabled])
+  @@map("biz_field_def")
+}
+
+model Profile {
+  id       String  @id @default(cuid())
+  /// 展示编号，红娘打电话报这个，比 cuid 好念
+  serialNo String  @unique @db.VarChar(20)
+  /// 可为空！红娘线下地推代录的资料还没有账号，之后用户注册再认领
+  userId   String? @unique
+  user     User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // ---- 高频过滤字段：固定列 + 索引 ----
+  realName       String?        @db.VarChar(50)
+  nickname       String?        @db.VarChar(50)
+  gender         Gender
+  birthday       DateTime       @db.Date
+  heightCm       Int?
+  weightKg       Int?
+  education      Education?
+  school         String?        @db.VarChar(100)
+  occupation     String?        @db.VarChar(100)
+  company        String?        @db.VarChar(100)
+  /// 年收入，单位：元（不是分——收入是粗粒度的，用元更直观）
+  annualIncome   Int?
+  maritalStatus  MaritalStatus  @default(SINGLE)
+  childrenStatus ChildrenStatus @default(NONE)
+  houseStatus    HouseStatus?
+  carStatus      CarStatus?
+
+  provinceCode     String? @db.VarChar(12)
+  cityCode         String? @db.VarChar(12)
+  districtCode     String? @db.VarChar(12)
+  cityName         String? @db.VarChar(50)
+  hometownCityCode String? @db.VarChar(12)
+  hometownCityName String? @db.VarChar(50)
+  lat              Float?
+  lng              Float?
+
+  introduction String? @db.Text
+
+  // ---- 联系方式：默认锁死，靠 ContactUnlock 才可见 ----
+  phone  String? @db.VarChar(20)
+  wechat String? @db.VarChar(50)
+
+  // ---- 状态 ----
+  status       ProfileStatus @default(DRAFT)
+  source       ProfileSource @default(SELF)
+  rejectReason String?       @db.VarChar(500)
+
+  matchmakerId String?
+  matchmaker   Matchmaker? @relation(fields: [matchmakerId], references: [id], onDelete: SetNull)
+
+  /// 置顶曝光（VIP 权益）
+  isTop       Boolean   @default(false)
+  topExpireAt DateTime?
+
+  /// AI 层：自我介绍的 embedding，JSON 数组。
+  /// 量级上来后建议迁到 pgvector 或 Milvus，见 docs/架构.md
+  introEmbedding     Json?
+  /// 择偶描述的 embedding
+  prefEmbedding      Json?
+  embeddingUpdatedAt DateTime?
+
+  viewCount    Int       @default(0)
+  lastActiveAt DateTime?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  photos      ProfilePhoto[]
+  fieldValues ProfileFieldValue[]
+  auditLogs   ProfileAuditLog[]
+  preference  Preference?
+  introAsA    Introduction[]      @relation("IntroSideA")
+  introAsB    Introduction[]      @relation("IntroSideB")
+  unlockedBy  ContactUnlock[]     @relation("UnlockTarget")
+  viewedBy    ProfileView[]       @relation("ViewTarget")
+
+  /// L1 硬过滤的主力索引：状态 + 性别 + 生日区间
+  @@index([status, gender, birthday])
+  @@index([status, cityCode, gender])
+  @@index([matchmakerId, status])
+  @@index([isTop, topExpireAt])
+  @@index([deletedAt])
+  @@map("biz_profile")
+}
+
+/// EAV：扩展字段的值。加字段不用改表。
+model ProfileFieldValue {
+  id        String   @id @default(cuid())
+  profileId String
+  profile   Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  fieldCode String   @db.VarChar(50)
+  field     FieldDef @relation(fields: [fieldCode], references: [code], onDelete: Cascade)
+
+  /// 按类型分列存，比全塞 text 好查
+  valueText String?   @db.Text
+  valueNum  Float?
+  valueDate DateTime?
+  valueJson Json?
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([profileId, fieldCode])
+  @@index([fieldCode, valueNum])
+  @@map("biz_profile_field_value")
+}
+
+model ProfilePhoto {
+  id        String  @id @default(cuid())
+  profileId String
+  profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  /// 原图地址
+  url       String  @db.VarChar(500)
+  /// 打码图地址（上传时同步生成，没权限的人只拿得到这个）
+  maskedUrl String? @db.VarChar(500)
+  width     Int?
+  height    Int?
+  sizeBytes Int?
+
+  isPrimary    Boolean     @default(false)
+  auditStatus  AuditStatus @default(PENDING)
+  rejectReason String?     @db.VarChar(200)
+  sort         Int         @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@index([profileId, sort])
+  @@index([auditStatus])
+  @@map("biz_profile_photo")
+}
+
+model ProfileAuditLog {
+  id             String         @id @default(cuid())
+  profileId      String
+  profile        Profile        @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  fromStatus     ProfileStatus?
+  toStatus       ProfileStatus
+  reason         String?        @db.VarChar(500)
+  /// 驳回时指出哪些字段有问题，前端高亮
+  rejectedFields Json?
+  operatorId     String?        @db.VarChar(30)
+  operatorName   String?        @db.VarChar(50)
+  createdAt      DateTime       @default(now())
+
+  @@index([profileId, createdAt])
+  @@map("biz_profile_audit_log")
+}
+
+/// 择偶要求。单独一张表而不是塞进 Profile，
+/// 因为 L2 打分要双向读它，独立表更好 join，也更好加字段。
+model Preference {
+  id        String  @id @default(cuid())
+  profileId String  @unique
+  profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  ageMin       Int?
+  ageMax       Int?
+  heightMin    Int?
+  heightMax    Int?
+  educationMin Education?
+  /// 期望对方年收入下限，元
+  incomeMin    Int?
+
+  /// 可接受的婚史，["SINGLE","DIVORCED"]，空/null = 不限
+  maritalStatus  Json?
+  /// 可接受的子女情况，空/null = 不限
+  childrenStatus Json?
+  /// 期望城市 adcode 数组，空/null = 不限
+  cityCodes      Json?
+
+  requireHouse Boolean @default(false)
+  requireCar   Boolean @default(false)
+
+  /// 自由描述，喂给 AI 层做「自我介绍 ↔ 择偶描述」语义匹配
+  description String? @db.Text
+
+  updatedAt DateTime @updatedAt
+
+  @@map("biz_preference")
+}
+
+// ═══════════════════════════════════════════════
+//  模块3：红娘系统
+// ═══════════════════════════════════════════════
+
+model Matchmaker {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name     String  @db.VarChar(50)
+  phone    String  @db.VarChar(20)
+  avatar   String? @db.VarChar(500)
+  cityCode String? @db.VarChar(12)
+  cityName String? @db.VarChar(50)
+  bio      String? @db.Text
+  /// 身份证/工牌等入驻材料
+  certImages Json?
+
+  /// 分润比例 0~1，如 0.2000 表示 20%
+  commissionRate Decimal          @default(0.2000) @db.Decimal(5, 4)
+  status         MatchmakerStatus @default(PENDING)
+
+  /// 可提现余额（分）。冗余字段，与 Commission 表对账；
+  /// 所有增减必须在事务里跟 Commission 一起改。
+  availableBalance Int @default(0)
+  /// 累计已提现（分）
+  withdrawnAmount  Int @default(0)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  members       Profile[]
+  introductions Introduction[]
+  commissions   Commission[]
+  withdrawals   Withdrawal[]
+  orders        Order[]
+
+  @@index([status])
+  @@index([cityCode])
+  @@map("biz_matchmaker")
+}
+
+model Introduction {
+  id       String @id @default(cuid())
+  serialNo String @unique @db.VarChar(20)
+
+  matchmakerId String
+  matchmaker   Matchmaker @relation(fields: [matchmakerId], references: [id], onDelete: Restrict)
+
+  aProfileId String
+  aProfile   Profile @relation("IntroSideA", fields: [aProfileId], references: [id], onDelete: Restrict)
+  bProfileId String
+  bProfile   Profile @relation("IntroSideB", fields: [bProfileId], references: [id], onDelete: Restrict)
+
+  /// 规范化的配对键 min(a,b):max(a,b)，用于查"这两人是不是已经牵过线了"。
+  /// MySQL 不支持部分唯一索引，所以只加普通索引，由 service 层查重。
+  pairKey String @db.VarChar(70)
+
+  status  IntroductionStatus @default(INITIATED)
+  aAgreed Boolean            @default(false)
+  bAgreed Boolean            @default(false)
+
+  /// 红娘写给双方的推荐语
+  remark String? @db.Text
+
+  /// 发起时的匹配分快照。事后双方资料改了，这里还留着当时的判断依据。
+  matchScore  Int?
+  matchDetail Json?
+
+  /// 结果反馈
+  resultNote String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  events IntroductionEvent[]
+
+  @@index([matchmakerId, status])
+  @@index([pairKey])
+  @@index([aProfileId])
+  @@index([bProfileId])
+  @@index([status, createdAt])
+  @@map("biz_introduction")
+}
+
+model IntroductionEvent {
+  id             String              @id @default(cuid())
+  introductionId String
+  introduction   Introduction        @relation(fields: [introductionId], references: [id], onDelete: Cascade)
+  fromStatus     IntroductionStatus?
+  toStatus       IntroductionStatus
+  note           String?             @db.VarChar(500)
+  operatorId     String?             @db.VarChar(30)
+  operatorName   String?             @db.VarChar(50)
+  createdAt      DateTime            @default(now())
+
+  @@index([introductionId, createdAt])
+  @@map("biz_introduction_event")
+}
+
+model Commission {
+  id           String     @id @default(cuid())
+  matchmakerId String
+  matchmaker   Matchmaker @relation(fields: [matchmakerId], references: [id], onDelete: Restrict)
+
+  source CommissionSource
+  /// 分
+  amount Int
+  status CommissionStatus @default(PENDING)
+
+  /// 关联的订单 id 或 牵线单 id
+  refId String? @db.VarChar(30)
+  refNo String? @db.VarChar(30)
+  remark String? @db.VarChar(200)
+
+  /// 冷静期结束、转为可提现的时间（防订单退款后钱已被提走）
+  settleAt DateTime?
+
+  withdrawalId String?
+  withdrawal   Withdrawal? @relation(fields: [withdrawalId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// 同一笔订单只能产生一条分润，防重复入账
+  @@unique([source, refId])
+  @@index([matchmakerId, status])
+  @@index([status, settleAt])
+  @@map("biz_commission")
+}
+
+model Withdrawal {
+  id           String     @id @default(cuid())
+  serialNo     String     @unique @db.VarChar(20)
+  matchmakerId String
+  matchmaker   Matchmaker @relation(fields: [matchmakerId], references: [id], onDelete: Restrict)
+
+  /// 分
+  amount Int
+  status WithdrawalStatus @default(PENDING)
+
+  /// 提现方式与账号
+  method  String  @default("WECHAT") @db.VarChar(20)
+  account String? @db.VarChar(100)
+  realName String? @db.VarChar(50)
+
+  reviewedBy String?   @db.VarChar(30)
+  reviewedAt DateTime?
+  rejectReason String? @db.VarChar(200)
+  paidAt     DateTime?
+  remark     String?   @db.VarChar(200)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  commissions Commission[]
+
+  @@index([matchmakerId, status])
+  @@index([status, createdAt])
+  @@map("biz_withdrawal")
+}
+
+// ═══════════════════════════════════════════════
+//  模块4：隐私分级
+// ═══════════════════════════════════════════════
+
+/// 联系方式解锁记录。有这条记录才看得到对方手机号/微信。
+model ContactUnlock {
+  id           String  @id @default(cuid())
+  viewerUserId String
+  viewer       User    @relation("UnlockViewer", fields: [viewerUserId], references: [id], onDelete: Cascade)
+  targetProfileId String
+  target       Profile @relation("UnlockTarget", fields: [targetProfileId], references: [id], onDelete: Cascade)
+
+  source         UnlockSource
+  /// 牵线解锁时关联的牵线单
+  introductionId String?      @db.VarChar(30)
+  /// 解锁有效期，null = 永久
+  expiresAt      DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@unique([viewerUserId, targetProfileId])
+  @@index([targetProfileId])
+  @@map("biz_contact_unlock")
+}
+
+/// 浏览记录。既做"谁看过我"，也做每日查看配额的去重依据
+/// （同一天重复看同一个人不重复扣次数）。
+model ProfileView {
+  id              String  @id @default(cuid())
+  viewerUserId    String
+  viewer          User    @relation("ViewVisitor", fields: [viewerUserId], references: [id], onDelete: Cascade)
+  targetProfileId String
+  target          Profile @relation("ViewTarget", fields: [targetProfileId], references: [id], onDelete: Cascade)
+
+  /// YYYY-MM-DD，配合唯一键做当日去重
+  dayKey String @db.VarChar(10)
+
+  createdAt DateTime @default(now())
+
+  @@unique([viewerUserId, targetProfileId, dayKey])
+  @@index([targetProfileId, createdAt])
+  @@map("biz_profile_view")
+}
+
+// ═══════════════════════════════════════════════
+//  模块5：VIP 与充值
+// ═══════════════════════════════════════════════
+
+model VipPackage {
+  id       String  @id @default(cuid())
+  name     String  @db.VarChar(50)
+  subtitle String? @db.VarChar(100)
+  /// 分
+  price         Int
+  /// 划线原价，分
+  originalPrice Int?
+  durationDays  Int
+
+  /// 权益清单 [{code, quota, cycle}]
+  benefits Json
+
+  isRecommended Boolean @default(false)
+  sort          Int     @default(0)
+  enabled       Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders Order[]
+
+  @@index([enabled, sort])
+  @@map("biz_vip_package")
+}
+
+model Order {
+  id      String @id @default(cuid())
+  orderNo String @unique @db.VarChar(32)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  packageId String
+  package   VipPackage @relation(fields: [packageId], references: [id], onDelete: Restrict)
+  /// 下单时的套餐快照。套餐改价/改权益后，历史订单还能还原当时买的是什么。
+  packageSnapshot Json
+
+  /// 分
+  amount     Int
+  payChannel PayChannel?
+  status     OrderStatus @default(PENDING)
+
+  paidAt   DateTime?
+  /// 超时未支付自动关闭的时间点
+  expireAt DateTime?
+
+  refundAmount Int     @default(0)
+  refundReason String? @db.VarChar(200)
+  refundedAt   DateTime?
+
+  /// 归属红娘，用于分润
+  matchmakerId String?
+  matchmaker   Matchmaker? @relation(fields: [matchmakerId], references: [id], onDelete: SetNull)
+
+  clientIp String? @db.VarChar(64)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  payments PaymentTxn[]
+  grants   BenefitGrant[]
+
+  @@index([userId, status])
+  @@index([status, expireAt])
+  @@index([status, paidAt])
+  @@index([matchmakerId])
+  @@map("biz_order")
+}
+
+/// 支付流水。与订单一对多——一个订单可能有多次支付尝试。
+/// transactionId 唯一 = 回调幂等的第一道闸。
+model PaymentTxn {
+  id      String @id @default(cuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  /// 我方交易号（发给渠道的 out_trade_no）
+  outTradeNo String @unique @db.VarChar(40)
+  /// 渠道交易号。唯一约束保证同一笔回调重放不会二次入账。
+  transactionId String? @unique @db.VarChar(64)
+
+  channel PayChannel
+  /// 分
+  amount  Int
+  status  PaymentStatus @default(PENDING)
+
+  /// 原始回调报文，出问题时用来复盘和申诉
+  rawNotify  Json?
+  notifiedAt DateTime?
+  /// 回调处理失败次数，超阈值告警
+  retryCount Int @default(0)
+  errorMsg   String? @db.VarChar(500)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([orderId])
+  @@index([status, createdAt])
+  @@map("biz_payment_txn")
+}
+
+/// 权益授予。一次成功支付产生 N 条（套餐里有几项权益就几条）。
+model BenefitGrant {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  code  BenefitCode
+  /// 每个周期的额度（DAILY 时表示"每天 quota 次"，NONE 时表示"总共 quota 次"）
+  quota Int
+  cycle ResetCycle  @default(NONE)
+
+  /// 权益到期时间 = 支付时间 + 套餐天数
+  expireAt DateTime
+
+  orderId String?
+  order   Order?  @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, code, expireAt])
+  @@map("biz_benefit_grant")
+}
+
+/// 权益消耗计数。按 (用户, 权益, 周期) 聚合，
+/// DAILY 的 periodKey 是 2026-08-10，MONTHLY 是 2026-08，NONE 是 ALL。
+model BenefitUsage {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  code      BenefitCode
+  periodKey String      @db.VarChar(10)
+  used      Int         @default(0)
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, code, periodKey])
+  @@map("biz_benefit_usage")
+}
+
+/// 权益核销流水。bizKey 唯一 = 业务幂等：
+/// 同一次"解锁张三的联系方式"重复提交只会扣一次。
+model BenefitConsumeLog {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  code      BenefitCode
+  amount    Int         @default(1)
+  periodKey String      @db.VarChar(10)
+
+  /// 业务类型：UNLOCK_CONTACT / VIEW_PROFILE / AI_MATCH ...
+  bizType String @db.VarChar(30)
+  /// 幂等键，如 unlock:userA:profileB
+  bizKey  String @unique @db.VarChar(120)
+  remark  String? @db.VarChar(200)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, code, createdAt])
+  @@map("biz_benefit_consume_log")
+}
+
+/// 每日对账结果。资金相关的东西必须有对账，否则出了资损你连什么时候开始错的都不知道。
+model ReconcileRecord {
+  id      String     @id @default(cuid())
+  /// 对账日 YYYY-MM-DD
+  date    String     @db.VarChar(10)
+  channel PayChannel
+
+  localCount   Int @default(0)
+  localAmount  Int @default(0)
+  remoteCount  Int @default(0)
+  remoteAmount Int @default(0)
+
+  result ReconcileResult
+  /// 差异明细
+  detail Json?
+
+  createdAt DateTime @default(now())
+
+  @@unique([date, channel])
+  @@index([result])
+  @@map("biz_reconcile_record")
+}
+
+/// 全局自增序列，用于生成 serialNo（会员号、牵线号、提现号）。
+/// 用表而不是 Redis：serialNo 要求绝对不重复，DB 事务比 Redis 可靠。
+model SerialCounter {
+  key   String @id @db.VarChar(30)
+  value Int    @default(0)
+
+  @@map("sys_serial_counter")
+}
