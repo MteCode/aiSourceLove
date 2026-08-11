@@ -6,7 +6,8 @@
   "workspaces": [
     "packages/*",
     "apps/server",
-    "apps/admin"
+    "apps/admin",
+    "apps/client"
   ],
   "engines": {
     "node": ">=20"
@@ -18,13 +19,16 @@
     "build": "npm run build:shared && npm run build:server && npm run build:admin",
     "dev:server": "npm run dev -w @yuanqiao/server",
     "dev:admin": "npm run dev -w @yuanqiao/admin",
-    "typecheck": "npm run typecheck -w @yuanqiao/shared && npm run typecheck -w @yuanqiao/server && npm run typecheck -w @yuanqiao/admin",
+    "typecheck": "npm run typecheck -w @yuanqiao/shared && npm run typecheck -w @yuanqiao/server && npm run typecheck -w @yuanqiao/admin && npm run typecheck -w @yuanqiao/client",
     "db:generate": "npm run db:generate -w @yuanqiao/server",
     "db:push": "npm run db:push -w @yuanqiao/server",
     "db:migrate": "npm run db:migrate -w @yuanqiao/server",
     "db:seed": "npm run db:seed -w @yuanqiao/server",
     "infra:up": "docker compose up -d",
     "infra:down": "docker compose down",
-    "infra:logs": "docker compose logs -f"
+    "infra:logs": "docker compose logs -f",
+    "build:client": "npm run build -w @yuanqiao/client",
+    "dev:client": "npm run dev -w @yuanqiao/client",
+    "dev:mp": "npm run dev:mp-weixin -w @yuanqiao/client"
   }
 }

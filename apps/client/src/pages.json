@@ -1,0 +1,56 @@
+{
+  "easycom": {
+    "autoscan": true,
+    "custom": {
+      "^yq-(.*)": "@/components/Yq$1.vue"
+    }
+  },
+  "pages": [
+    { "path": "pages/square/index", "style": { "navigationBarTitleText": "缘分广场", "enablePullDownRefresh": true } },
+    { "path": "pages/match/index", "style": { "navigationBarTitleText": "为你推荐" } },
+    { "path": "pages/intro/list", "style": { "navigationBarTitleText": "我的牵线" } },
+    { "path": "pages/mine/index", "style": { "navigationBarTitleText": "我的" } },
+
+    { "path": "pages/login/index", "style": { "navigationBarTitleText": "登录", "navigationStyle": "custom" } },
+
+    { "path": "pages/profile/detail", "style": { "navigationBarTitleText": "TA 的资料" } },
+    { "path": "pages/profile/edit", "style": { "navigationBarTitleText": "我的资料" } },
+    { "path": "pages/profile/preference", "style": { "navigationBarTitleText": "择偶要求" } },
+    { "path": "pages/profile/photos", "style": { "navigationBarTitleText": "我的照片" } },
+    { "path": "pages/profile/claim", "style": { "navigationBarTitleText": "认领档案" } },
+    { "path": "pages/profile/audit-log", "style": { "navigationBarTitleText": "审核记录" } },
+
+    { "path": "pages/intro/detail", "style": { "navigationBarTitleText": "牵线详情" } },
+
+    { "path": "pages/vip/index", "style": { "navigationBarTitleText": "开通会员" } },
+    { "path": "pages/vip/benefits", "style": { "navigationBarTitleText": "我的权益" } },
+    { "path": "pages/order/list", "style": { "navigationBarTitleText": "我的订单" } },
+
+    { "path": "pages/mine/visitors", "style": { "navigationBarTitleText": "谁看过我" } },
+    { "path": "pages/mine/settings", "style": { "navigationBarTitleText": "设置" } },
+
+    { "path": "pages/matchmaker/apply", "style": { "navigationBarTitleText": "申请成为红娘" } },
+    { "path": "pages/matchmaker/workbench", "style": { "navigationBarTitleText": "红娘工作台" } },
+    { "path": "pages/matchmaker/members", "style": { "navigationBarTitleText": "我的会员" } },
+    { "path": "pages/matchmaker/create-intro", "style": { "navigationBarTitleText": "发起牵线" } },
+    { "path": "pages/matchmaker/commission", "style": { "navigationBarTitleText": "我的收益" } }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "缘桥",
+    "navigationBarBackgroundColor": "#ffffff",
+    "backgroundColor": "#f5f6f8"
+  },
+  "tabBar": {
+    "color": "#909399",
+    "selectedColor": "#e05a7d",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
+    "list": [
+      { "pagePath": "pages/square/index", "text": "广场" },
+      { "pagePath": "pages/match/index", "text": "推荐" },
+      { "pagePath": "pages/intro/list", "text": "牵线" },
+      { "pagePath": "pages/mine/index", "text": "我的" }
+    ]
+  }
+}

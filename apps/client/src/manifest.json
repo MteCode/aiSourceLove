@@ -1,0 +1,28 @@
+{
+  "name": "缘桥",
+  "appid": "",
+  "description": "相亲 / 婚恋撮合平台",
+  "versionName": "0.1.0",
+  "versionCode": "100",
+  "vueVersion": "3",
+  "mp-weixin": {
+    "appid": "",
+    "setting": {
+      "urlCheck": false,
+      "minified": true
+    },
+    "usingComponents": true,
+    "permission": {},
+    "requiredPrivateInfos": []
+  },
+  "h5": {
+    "title": "缘桥",
+    "router": {
+      "mode": "history",
+      "base": "/h5/"
+    },
+    "devServer": {
+      "port": 5174
+    }
+  }
+}
