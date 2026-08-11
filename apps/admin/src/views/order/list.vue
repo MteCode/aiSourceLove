@@ -65,7 +65,7 @@
             v-perm="'order:refund'"
             link
             type="danger"
-            @click="refund(row)"
+            @click="refund(row as OrderDto)"
           >
             退款
           </el-button>

@@ -88,14 +88,14 @@
                 <el-switch
                   :model-value="row.enabled"
                   :disabled="!canEdit"
-                  @change="(v: string | number | boolean) => toggleEnabled(row, !!v)"
+                  @change="(v: string | number | boolean) => toggleEnabled(row as FieldDefDto, !!v)"
                 />
               </template>
             </el-table-column>
             <el-table-column label="操作" width="120" align="center" fixed="right">
               <template #default="{ row }">
-                <el-button v-perm="'field:edit'" link type="primary" @click="openField(row)">编辑</el-button>
-                <el-popconfirm title="删除后已录入的数据会保留但不再展示，确定吗？" @confirm="removeField(row)">
+                <el-button v-perm="'field:edit'" link type="primary" @click="openField(row as FieldDefDto)">编辑</el-button>
+                <el-popconfirm title="删除后已录入的数据会保留但不再展示，确定吗？" @confirm="removeField(row as FieldDefDto)">
                   <template #reference>
                     <el-button v-perm="'field:edit'" link type="danger">删除</el-button>
                   </template>

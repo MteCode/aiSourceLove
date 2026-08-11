@@ -77,13 +77,13 @@
       </el-table-column>
       <el-table-column label="操作" width="210" fixed="right" align="center">
         <template #default="{ row }">
-          <el-button v-perm="'system:user:edit'" link type="primary" @click="openEdit(row)">编辑</el-button>
-          <el-button v-perm="'system:user:edit'" link type="warning" @click="resetPassword(row)">重置密码</el-button>
+          <el-button v-perm="'system:user:edit'" link type="primary" @click="openEdit(row as SysUserRow)">编辑</el-button>
+          <el-button v-perm="'system:user:edit'" link type="warning" @click="resetPassword(row as SysUserRow)">重置密码</el-button>
           <el-button
             v-perm="'system:user:edit'"
             link
             :type="row.status === 'ACTIVE' ? 'danger' : 'success'"
-            @click="toggleBan(row)"
+            @click="toggleBan(row as SysUserRow)"
           >
             {{ row.status === 'ACTIVE' ? '封禁' : '解封' }}
           </el-button>

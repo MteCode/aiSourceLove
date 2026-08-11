@@ -5,7 +5,14 @@
       <div><slot name="toolbar" /></div>
     </div>
 
-    <el-table v-loading="loading" :data="rows" stripe border :row-key="rowKey" style="width: 100%">
+    <el-table
+      v-loading="loading"
+      :data="(rows as Record<string, any>[])"
+      stripe
+      border
+      :row-key="rowKey"
+      style="width: 100%"
+    >
       <slot />
       <template #empty>
         <el-empty :description="emptyText" :image-size="80" />
@@ -28,7 +35,12 @@
 </template>
 
 <script setup lang="ts">
-/** 表格 + 分页的壳，列通过默认插槽传入 */
+/**
+ * 表格 + 分页的壳，列通过默认插槽传入。
+ *
+ * 注意：el-table-column 的作用域插槽固定推断为 DefaultRow（Record<PropertyKey, any>），
+ * 拿不到调用方的行类型，所以各页面在模板里把 row 断言回具体类型。
+ */
 withDefaults(
   defineProps<{
     rows: unknown[];

@@ -80,8 +80,8 @@
       <el-table-column label="操作" width="200" fixed="right" align="center">
         <template #default="{ row }">
           <el-button link type="primary" @click="$router.push(`/member/detail/${row.id}`)">详情</el-button>
-          <el-button v-perm="'profile:edit'" link type="primary" @click="openAssign(row)">归属</el-button>
-          <el-popconfirm title="删除后该会员不再参与推荐，确定吗？" @confirm="remove(row)">
+          <el-button v-perm="'profile:edit'" link type="primary" @click="openAssign(row as ProfileBriefDto)">归属</el-button>
+          <el-popconfirm title="删除后该会员不再参与推荐，确定吗？" @confirm="remove(row as ProfileBriefDto)">
             <template #reference>
               <el-button v-perm="'profile:delete'" link type="danger">删除</el-button>
             </template>

@@ -65,12 +65,12 @@
       <el-table-column label="操作" width="180" fixed="right" align="center">
         <template #default="{ row }">
           <template v-if="row.status === 'PENDING'">
-            <el-button v-perm="'withdrawal:review'" link type="success" @click="review(row, 'APPROVED')">通过</el-button>
-            <el-button v-perm="'withdrawal:review'" link type="danger" @click="review(row, 'REJECTED')">拒绝</el-button>
+            <el-button v-perm="'withdrawal:review'" link type="success" @click="review(row as WithdrawalRow, 'APPROVED')">通过</el-button>
+            <el-button v-perm="'withdrawal:review'" link type="danger" @click="review(row as WithdrawalRow, 'REJECTED')">拒绝</el-button>
           </template>
           <template v-else-if="row.status === 'APPROVED'">
-            <el-button v-perm="'withdrawal:review'" link type="primary" @click="review(row, 'PAID')">标记已打款</el-button>
-            <el-button v-perm="'withdrawal:review'" link type="danger" @click="review(row, 'REJECTED')">拒绝</el-button>
+            <el-button v-perm="'withdrawal:review'" link type="primary" @click="review(row as WithdrawalRow, 'PAID')">标记已打款</el-button>
+            <el-button v-perm="'withdrawal:review'" link type="danger" @click="review(row as WithdrawalRow, 'REJECTED')">拒绝</el-button>
           </template>
           <span v-else class="text-muted">已完结</span>
         </template>

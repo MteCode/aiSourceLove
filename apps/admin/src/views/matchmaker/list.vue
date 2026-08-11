@@ -64,8 +64,8 @@
       </el-table-column>
       <el-table-column label="操作" width="170" fixed="right" align="center">
         <template #default="{ row }">
-          <el-button link type="primary" @click="openStats(row)">业绩</el-button>
-          <el-button v-perm="'matchmaker:review'" link type="primary" @click="openReview(row)">
+          <el-button link type="primary" @click="openStats(row as MatchmakerDto)">业绩</el-button>
+          <el-button v-perm="'matchmaker:review'" link type="primary" @click="openReview(row as MatchmakerDto)">
             {{ row.status === 'PENDING' ? '审核' : '调整' }}
           </el-button>
         </template>
