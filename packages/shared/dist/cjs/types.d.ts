@@ -350,7 +350,8 @@ export interface BenefitSpec {
     code: BenefitCode;
     /** 数量：次数或天数 */
     quota: number;
-    cycle: ResetCycle;
+    /** 不传则用 BENEFIT_META 里该权益的默认周期 */
+    cycle?: ResetCycle;
 }
 export interface VipPackageDto {
     id: string;

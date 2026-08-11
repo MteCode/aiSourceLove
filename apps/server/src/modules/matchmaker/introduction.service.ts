@@ -105,7 +105,7 @@ export class IntroductionService {
           remark: dto.remark,
           status: IntroductionStatus.INITIATED,
           matchScore: score?.score ?? null,
-          matchDetail: (score?.details ?? []) as Prisma.InputJsonValue,
+          matchDetail: (score?.details ?? []) as unknown as Prisma.InputJsonValue,
         },
       });
       await tx.introductionEvent.create({

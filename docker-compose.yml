@@ -12,13 +12,20 @@ services:
       - --default-time-zone=+08:00
       # 匹配引擎里有 ORDER BY 表达式 + 分页，放宽一点 sort buffer
       - --sort_buffer_size=4M
+      # 目标机只有 3.6G 内存，还要跑 Node + Nginx，
+      # MySQL 8 默认 buffer pool 128M 其实够用，这里显式钉住避免以后被调大撑爆
+      - --innodb-buffer-pool-size=256M
+      - --max-connections=100
+      - --performance-schema=OFF
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_dev_pwd}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-yuanqiao}
       MYSQL_USER: ${MYSQL_USER:-yuanqiao}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-yuanqiao_dev_pwd}
     ports:
-      - "${MYSQL_PORT:-3306}:3306"
+      # 只绑本机！公网机器上把 3306 暴露出去，几小时内就会被爆破。
+      # 需要远程连库请用 SSH 隧道：ssh -L 3306:127.0.0.1:3306 user@host
+      - "127.0.0.1:${MYSQL_PORT:-3306}:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
@@ -39,7 +46,8 @@ services:
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      # 同上，Redis 未授权访问是经典入侵入口
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     healthcheck:

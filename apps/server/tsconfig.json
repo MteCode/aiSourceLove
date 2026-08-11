@@ -25,6 +25,8 @@
       "@/*": ["src/*"]
     }
   },
-  "include": ["src/**/*", "prisma/**/*"],
+  // 只含 src：把 prisma/ 也放进来会让 rootDir 抬到 apps/server，
+  // 编译产物变成 dist/src/main.js。seed.ts 走 tsx 运行 + tsconfig.check.json 做类型检查。
+  "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
 }
