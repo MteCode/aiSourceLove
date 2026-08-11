@@ -25,10 +25,15 @@ async function submit(): Promise<void> {
     await profileApi.claim(no);
     await user.refreshQuietly();
     toast('认领成功', 'success');
-    setTimeout(() => uni.redirectTo({ url: '/pages/profile/edit' }), 800);
+    setTimeout(() => goReplace('/pages/profile/edit'), 800);
   } finally {
     submitting.value = false;
   }
+}
+
+/** 模板里访问不到 uni，跳转统一走包装函数 */
+function goReplace(url: string): void {
+  uni.redirectTo({ url });
 }
 </script>
 

@@ -50,7 +50,7 @@ async function pay(): Promise<void> {
 
     await user.refreshQuietly();
     toast('开通成功', 'success');
-    setTimeout(() => uni.navigateTo({ url: '/pages/vip/benefits' }), 800);
+    setTimeout(() => goto('/pages/vip/benefits'), 800);
   } catch {
     // 错误已由请求层提示
   } finally {
@@ -88,6 +88,11 @@ function benefitUnit(code: string): string {
 }
 
 onShow(load);
+
+/** 模板里访问不到 uni，跳转统一走包装函数 */
+function goto(url: string): void {
+  uni.navigateTo({ url });
+}
 </script>
 
 <template>

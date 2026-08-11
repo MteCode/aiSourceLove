@@ -74,8 +74,29 @@ function fill(pref: PreferenceDto): void {
   eduIndex.value = Math.max(EDU_OPTIONS.findIndex((o) => o.value === form.educationMin), 0);
 }
 
-function num(e: { detail: { value: string } }): number | undefined {
+/** uni 的事件对象在各端形状不完全一致，统一收口成这个最小结构 */
+type PickerEvent = { detail: { value: string } };
+type SwitchEvent = { detail: { value: boolean } };
+
+function num(e: PickerEvent): number | undefined {
   return e.detail.value === '' ? undefined : Number(e.detail.value);
+}
+
+function onEduChange(e: PickerEvent): void {
+  eduIndex.value = Number(e.detail.value);
+  form.educationMin = EDU_OPTIONS[eduIndex.value].value;
+}
+
+function onHouseChange(e: SwitchEvent): void {
+  form.requireHouse = e.detail.value;
+}
+
+function onCarChange(e: SwitchEvent): void {
+  form.requireCar = e.detail.value;
+}
+
+function onDescInput(e: PickerEvent): void {
+  form.description = e.detail.value;
 }
 
 function toggle(list: string[], value: string): void {
@@ -133,17 +154,17 @@ onShow(load);
     <yq-card title="基本条件">
       <view class="row">
         <text class="label">年龄</text>
-        <input class="input" type="number" :value="form.ageMin ?? ''" placeholder="不限" @input="(e) => (form.ageMin = num(e as never))" />
+        <input class="input" type="number" :value="form.ageMin ?? ''" placeholder="不限" @input="(e: PickerEvent) => (form.ageMin = num(e))" />
         <text class="sep">-</text>
-        <input class="input" type="number" :value="form.ageMax ?? ''" placeholder="不限" @input="(e) => (form.ageMax = num(e as never))" />
+        <input class="input" type="number" :value="form.ageMax ?? ''" placeholder="不限" @input="(e: PickerEvent) => (form.ageMax = num(e))" />
         <text class="unit">岁</text>
       </view>
 
       <view class="row">
         <text class="label">身高</text>
-        <input class="input" type="number" :value="form.heightMin ?? ''" placeholder="不限" @input="(e) => (form.heightMin = num(e as never))" />
+        <input class="input" type="number" :value="form.heightMin ?? ''" placeholder="不限" @input="(e: PickerEvent) => (form.heightMin = num(e))" />
         <text class="sep">-</text>
-        <input class="input" type="number" :value="form.heightMax ?? ''" placeholder="不限" @input="(e) => (form.heightMax = num(e as never))" />
+        <input class="input" type="number" :value="form.heightMax ?? ''" placeholder="不限" @input="(e: PickerEvent) => (form.heightMax = num(e))" />
         <text class="unit">cm</text>
       </view>
 
@@ -154,7 +175,7 @@ onShow(load);
           :range="EDU_OPTIONS"
           range-key="label"
           :value="eduIndex"
-          @change="(e) => { eduIndex = Number((e as never as { detail: { value: string } }).detail.value); form.educationMin = EDU_OPTIONS[eduIndex].value; }"
+          @change="onEduChange"
         >
           <view class="picker">
             <text>{{ EDU_OPTIONS[eduIndex].label }}</text>
@@ -165,7 +186,7 @@ onShow(load);
 
       <view class="row">
         <text class="label">年收入不低于</text>
-        <input class="input flex1" type="digit" :value="form.incomeWan ?? ''" placeholder="不限" @input="(e) => (form.incomeWan = num(e as never))" />
+        <input class="input flex1" type="digit" :value="form.incomeWan ?? ''" placeholder="不限" @input="(e: PickerEvent) => (form.incomeWan = num(e))" />
         <text class="unit">万</text>
       </view>
     </yq-card>
@@ -201,11 +222,11 @@ onShow(load);
     <yq-card title="物质条件">
       <view class="switch-row">
         <text>要求有房</text>
-        <switch :checked="form.requireHouse" color="#e05a7d" @change="(e) => (form.requireHouse = (e as never as { detail: { value: boolean } }).detail.value)" />
+        <switch :checked="form.requireHouse" color="#e05a7d" @change="onHouseChange" />
       </view>
       <view class="switch-row">
         <text>要求有车</text>
-        <switch :checked="form.requireCar" color="#e05a7d" @change="(e) => (form.requireCar = (e as never as { detail: { value: boolean } }).detail.value)" />
+        <switch :checked="form.requireCar" color="#e05a7d" @change="onCarChange" />
       </view>
     </yq-card>
 
@@ -215,7 +236,7 @@ onShow(load);
         :value="form.description"
         placeholder="用一段话描述你想找什么样的人。这段会参与 AI 语义匹配，写得越真实越有用。"
         maxlength="1000"
-        @input="(e) => (form.description = (e as never as { detail: { value: string } }).detail.value)"
+        @input="onDescInput"
       />
     </yq-card>
 

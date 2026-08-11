@@ -61,7 +61,9 @@ function resetFilter(): void {
   applyFilter();
 }
 
-function num(e: { detail: { value: string } }): number | undefined {
+type UniInputEvent = { detail: { value: string } };
+
+function num(e: UniInputEvent): number | undefined {
   return e.detail.value === '' ? undefined : Number(e.detail.value);
 }
 
@@ -75,6 +77,11 @@ onPullDownRefresh(async () => {
 });
 
 onReachBottom(() => void load());
+
+/** 模板里访问不到 uni，跳转统一走包装函数 */
+function goto(url: string): void {
+  uni.navigateTo({ url });
+}
 </script>
 
 <template>
@@ -91,10 +98,10 @@ onReachBottom(() => void load());
     </view>
 
     <!-- 没资料的用户先引导去填，否则广场逛完也没法开始 -->
-    <view v-if="user.logged && !user.profileId" class="notice" @tap="() => uni.navigateTo({ url: '/pages/profile/edit' })">
+    <view v-if="user.logged && !user.profileId" class="notice" @tap="goto('/pages/profile/edit')">
       <text>还没有你的资料，完善后才能被推荐给别人 ›</text>
     </view>
-    <view v-else-if="user.logged && !user.profileApproved" class="notice" @tap="() => uni.navigateTo({ url: '/pages/profile/edit' })">
+    <view v-else-if="user.logged && !user.profileApproved" class="notice" @tap="goto('/pages/profile/edit')">
       <text>你的资料还未通过审核，通过后才会出现在广场 ›</text>
     </view>
 
@@ -128,9 +135,9 @@ onReachBottom(() => void load());
 
         <text class="panel-label">年龄</text>
         <view class="range">
-          <input class="range-input" type="number" :value="filter.ageMin ?? ''" placeholder="不限" @input="(e) => (filter.ageMin = num(e as never))" />
+          <input class="range-input" type="number" :value="filter.ageMin ?? ''" placeholder="不限" @input="(e: UniInputEvent) => (filter.ageMin = num(e))" />
           <text class="sep">-</text>
-          <input class="range-input" type="number" :value="filter.ageMax ?? ''" placeholder="不限" @input="(e) => (filter.ageMax = num(e as never))" />
+          <input class="range-input" type="number" :value="filter.ageMax ?? ''" placeholder="不限" @input="(e: UniInputEvent) => (filter.ageMax = num(e))" />
         </view>
 
         <view class="panel-footer">

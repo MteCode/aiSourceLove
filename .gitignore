@@ -41,3 +41,7 @@ dist/
 # unplugin 自动生成的类型声明，每次 dev/build 会重新产出
 apps/admin/src/auto-imports.d.ts
 apps/admin/src/components.d.ts
+
+# uni-app 构建产物
+apps/client/dist/
+apps/client/unpackage/

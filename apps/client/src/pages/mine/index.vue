@@ -54,13 +54,18 @@ onShow(() => {
   void user.refreshQuietly();
   void loadMatchmaker();
 });
+
+/** 模板里访问不到 uni，跳转统一走包装函数 */
+function goto(url: string): void {
+  uni.navigateTo({ url });
+}
 </script>
 
 <template>
   <view class="yq-page">
     <!-- 头部 -->
     <view class="header">
-      <view v-if="!user.logged" class="login-tip" @tap="() => uni.navigateTo({ url: '/pages/login/index' })">
+      <view v-if="!user.logged" class="login-tip" @tap="goto('/pages/login/index')">
         <view class="avatar avatar--empty">?</view>
         <view class="head-info">
           <text class="nick">点击登录</text>

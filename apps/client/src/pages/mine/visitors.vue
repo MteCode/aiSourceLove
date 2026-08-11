@@ -23,13 +23,18 @@ onShow(async () => {
 function open(id: string): void {
   uni.navigateTo({ url: `/pages/profile/detail?id=${id}` });
 }
+
+/** 模板里访问不到 uni，跳转统一走包装函数 */
+function goto(url: string): void {
+  uni.navigateTo({ url });
+}
 </script>
 
 <template>
   <view class="yq-page">
     <yq-empty v-if="denied || !user.isVip" icon="👀" text="「谁看过我」是会员专属功能">
       <text class="tip yq-muted">开通后可以看到最近谁浏览过你的资料</text>
-      <button class="btn" @tap="() => uni.navigateTo({ url: '/pages/vip/index' })">去开通会员</button>
+      <button class="btn" @tap="goto('/pages/vip/index')">去开通会员</button>
     </yq-empty>
 
     <template v-else>

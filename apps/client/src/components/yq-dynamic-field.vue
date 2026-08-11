@@ -37,7 +37,10 @@ const rangeValue = computed(() => {
   return { min: v?.min ?? '', max: v?.max ?? '' };
 });
 
-function onInput(e: { detail: { value: string } }): void {
+/** uni 各端的事件对象形状不完全一致，统一收口成这个最小结构 */
+export type UniInputEvent = { detail: { value: string } };
+
+function onInput(e: UniInputEvent): void {
   emit('update:modelValue', e.detail.value);
 }
 
@@ -67,9 +70,14 @@ function onBoolean(e: { detail: { value: boolean } }): void {
   emit('update:modelValue', e.detail.value);
 }
 
-function onRange(which: 'min' | 'max', e: { detail: { value: string } }): void {
+function onRange(which: 'min' | 'max', e: UniInputEvent): void {
   const v = e.detail.value === '' ? undefined : Number(e.detail.value);
   emit('update:modelValue', { ...rangeValue.value, [which]: v });
+}
+
+/** 模板里访问不到 uni，跳转统一走包装函数 */
+function goto(url: string): void {
+  uni.navigateTo({ url });
 }
 </script>
 
@@ -163,7 +171,7 @@ function onRange(which: 'min' | 'max', e: { detail: { value: string } }): void {
         type="number"
         :value="rangeValue.min === '' ? '' : String(rangeValue.min)"
         placeholder="最小"
-        @input="(e) => onRange('min', e as never)"
+        @input="(e: UniInputEvent) => onRange('min', e)"
       />
       <text class="sep">-</text>
       <input
@@ -171,7 +179,7 @@ function onRange(which: 'min' | 'max', e: { detail: { value: string } }): void {
         type="number"
         :value="rangeValue.max === '' ? '' : String(rangeValue.max)"
         placeholder="最大"
-        @input="(e) => onRange('max', e as never)"
+        @input="(e: UniInputEvent) => onRange('max', e)"
       />
     </view>
 
@@ -179,7 +187,7 @@ function onRange(which: 'min' | 'max', e: { detail: { value: string } }): void {
     <view
       v-else-if="field.type === 'IMAGE' || field.type === 'IMAGES'"
       class="control control--picker"
-      @tap="() => uni.navigateTo({ url: '/pages/profile/photos' })"
+      @tap="goto('/pages/profile/photos')"
     >
       <text class="placeholder">去照片管理页上传</text>
       <text class="arrow">›</text>

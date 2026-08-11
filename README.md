@@ -6,6 +6,7 @@ Monorepo，三块：共享契约、NestJS 后端、Vue3 后台管理端。
 packages/shared   前后端共享的枚举、中文标签、类型契约、状态机、隐私分级
 apps/server       NestJS + Prisma + MySQL + Redis
 apps/admin        Vue3 + Vite + Element Plus 后台管理端
+apps/client       uni-app + Vue3 会员端（微信小程序 / H5）
 deploy            Nginx 配置与部署脚本
 ```
 
@@ -50,23 +51,32 @@ npm run build:shared && npm run db:push && npm run db:seed
 ```bash
 npm run dev:server   # http://localhost:3000/api ，文档 /api/docs
 npm run dev:admin    # http://localhost:5173
+npm run dev:client   # H5 会员端 http://localhost:5174
+npm run dev:mp       # 微信小程序，产物导入微信开发者工具
 ```
 
-后台管理端统一请求相对路径 `/api`，开发期由 Vite 代理到后端（见 `apps/admin/vite.config.ts`），
-所以不需要配后端绝对地址，也不会有跨域问题。
+两个前端都统一请求相对路径 `/api`，开发期由各自的 Vite 代理转到后端，
+所以不需要配后端绝对地址，也不会有跨域问题。小程序端没有跨域概念但也没有相对路径，
+真机调试时要把 `apps/client/.env.development` 的 `VITE_API_BASE` 改成后端可访问的绝对地址。
+
+微信小程序还需要：在 `apps/client/src/manifest.json` 填 `mp-weixin.appid`，
+在 `.env` 填 `WX_MINI_APP_ID` / `WX_MINI_APP_SECRET`，
+然后用微信开发者工具导入 `apps/client/dist/dev/mp-weixin`。
 
 ## 常用命令
 
 ```bash
-npm run typecheck        # 三个包全量类型检查
-npm run build            # shared → server → admin 依次构建
+npm run typecheck        # 四个包全量类型检查
+npm run build            # shared → server → admin → client(H5) 依次构建
+npm run build:mp         # 单独打微信小程序包
 npm run db:migrate       # 生成并应用迁移（生产用这个，不要用 db:push）
 npm run infra:logs       # 看容器日志
 ```
 
 ## 部署
 
-`deploy/deploy.sh` 会构建三个包并安装 Nginx 配置：后台管理端由 Nginx 发静态文件，
+`deploy/deploy.sh` 会构建各个包并安装 Nginx 配置：后台管理端由 Nginx 发静态文件（根路径），
+会员端 H5 挂在 `/h5/`，
 `/api` 反代到 3000 端口的 Node 进程，`/uploads` 直接由 Nginx 发（不占 Node 的事件循环）。
 小程序上线必须 HTTPS，域名就绪后用 certbot 签证书，细节见 `deploy/nginx.conf` 末尾注释。
 

@@ -95,6 +95,11 @@ onShow(() => {
 });
 
 onReachBottom(() => void load());
+
+/** 模板里访问不到 uni，跳转统一走包装函数 */
+function goto(url: string): void {
+  uni.navigateTo({ url });
+}
 </script>
 
 <template>
@@ -110,7 +115,7 @@ onReachBottom(() => void load());
     </view>
 
     <yq-empty v-if="blocked === 'need-profile'" icon="📝" text="完善资料后才能开始匹配">
-      <button class="empty-btn" @tap="() => uni.navigateTo({ url: '/pages/profile/edit' })">去填资料</button>
+      <button class="empty-btn" @tap="goto('/pages/profile/edit')">去填资料</button>
     </yq-empty>
     <yq-empty v-else-if="blocked === 'need-approve'" icon="⏳" text="资料审核通过后就会为你推荐" />
 

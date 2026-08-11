@@ -25,6 +25,11 @@ function ratio(b: UserBenefitDto): number {
 }
 
 onShow(load);
+
+/** 模板里访问不到 uni，跳转统一走包装函数 */
+function goto(url: string): void {
+  uni.navigateTo({ url });
+}
 </script>
 
 <template>
@@ -32,7 +37,7 @@ onShow(load);
     <view class="head">
       <text class="status">{{ user.isVip ? '会员生效中' : '未开通会员' }}</text>
       <text v-if="user.isVip" class="expire">有效期至 {{ formatDate(user.user?.vipExpireAt) }}</text>
-      <button v-else class="head-btn" @tap="() => uni.navigateTo({ url: '/pages/vip/index' })">去开通</button>
+      <button v-else class="head-btn" @tap="goto('/pages/vip/index')">去开通</button>
     </view>
 
     <view class="yq-card">
@@ -55,7 +60,7 @@ onShow(load);
       </view>
 
       <yq-empty v-if="!benefits.length" icon="🎫" text="还没有任何权益">
-        <button class="empty-btn" @tap="() => uni.navigateTo({ url: '/pages/vip/index' })">去开通会员</button>
+        <button class="empty-btn" @tap="goto('/pages/vip/index')">去开通会员</button>
       </yq-empty>
     </view>
   </view>
