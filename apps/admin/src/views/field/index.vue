@@ -69,7 +69,7 @@
               </template>
             </el-table-column>
             <el-table-column label="可见等级" width="110">
-              <template #default="{ row }">{{ VISIBILITY_LABEL[row.visibility] }}</template>
+              <template #default="{ row }">{{ visibilityLabel(row.visibility) }}</template>
             </el-table-column>
             <el-table-column label="属性" width="150">
               <template #default="{ row }">
@@ -80,7 +80,7 @@
             </el-table-column>
             <el-table-column label="权重键" width="130">
               <template #default="{ row }">
-                {{ row.weightKey ? MATCH_WEIGHT_LABEL[row.weightKey] : '-' }}
+                {{ weightLabel(row.weightKey) }}
               </template>
             </el-table-column>
             <el-table-column label="启用" width="80" align="center">
@@ -88,7 +88,7 @@
                 <el-switch
                   :model-value="row.enabled"
                   :disabled="!canEdit"
-                  @change="(v) => toggleEnabled(row, v as boolean)"
+                  @change="(v: string | number | boolean) => toggleEnabled(row, !!v)"
                 />
               </template>
             </el-table-column>
@@ -125,6 +125,8 @@ import {
   VISIBILITY_LABEL,
   type FieldDefDto,
   type FieldGroupDto,
+  type MatchWeightKey,
+  type VisibilityLevel,
 } from '@yuanqiao/shared';
 import { fieldApi } from '@/api';
 import { FIELD_TYPE_LABEL } from './constants';
@@ -136,6 +138,16 @@ import GroupDialog from './components/GroupDialog.vue';
 
 const user = useUserStore();
 const canEdit = computed(() => user.can('field:edit'));
+
+// 表格插槽给出的 row 是 any，直接拿去索引强类型的 Record 会触发 TS7053，
+// 统一在这里收口成函数
+function visibilityLabel(v: VisibilityLevel): string {
+  return VISIBILITY_LABEL[v] ?? String(v);
+}
+
+function weightLabel(k: MatchWeightKey | null): string {
+  return k ? (MATCH_WEIGHT_LABEL[k] ?? k) : '-';
+}
 
 const loading = ref(false);
 const groups = ref<FieldGroupDto[]>([]);

@@ -68,7 +68,7 @@
                 :model-value="isModuleAll(g)"
                 :indeterminate="isModuleSome(g)"
                 :disabled="readonly"
-                @change="(v) => toggleModule(g, v as boolean)"
+                @change="(v: string | number | boolean) => toggleModule(g, !!v)"
               >
                 <strong>{{ g.module }}</strong>
               </el-checkbox>

@@ -108,7 +108,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { Connection, MagicStick } from '@element-plus/icons-vue';
-import { Gender, type MatchResultDto, type ProfileBriefDto } from '@yuanqiao/shared';
+import type { MatchResultDto, ProfileBriefDto } from '@yuanqiao/shared';
 import { matchApi } from '@/api';
 import ProfilePicker from '@/components/ProfilePicker.vue';
 

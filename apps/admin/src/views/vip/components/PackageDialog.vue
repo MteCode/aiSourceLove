@@ -39,7 +39,7 @@
           <div v-for="code in BENEFIT_CODES" :key="code" class="benefit-row">
             <el-checkbox
               :model-value="!!selected[code]"
-              @change="(v) => toggle(code, v as boolean)"
+              @change="(v: string | number | boolean) => toggle(code, !!v)"
             >
               {{ BENEFIT_META[code].label }}
             </el-checkbox>

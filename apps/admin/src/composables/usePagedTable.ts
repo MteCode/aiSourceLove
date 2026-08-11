@@ -1,4 +1,4 @@
-import { reactive, ref, onMounted } from 'vue';
+import { reactive, ref, onMounted, type Ref } from 'vue';
 import type { PageResult } from '@yuanqiao/shared';
 
 /**
@@ -7,13 +7,15 @@ import type { PageResult } from '@yuanqiao/shared';
  * 12 个列表页都是「查询表单 + 分页 + 表格」这一套，
  * 抽出来后每个页面只剩查询条件和列定义。
  */
-export function usePagedTable<Row, Query extends Record<string, unknown>>(
+export function usePagedTable<Row, Query extends object>(
   fetcher: (query: Query & { page: number; pageSize: number }) => Promise<PageResult<Row>>,
   initialQuery: Query,
   options?: { pageSize?: number; immediate?: boolean },
 ) {
   const loading = ref(false);
-  const rows = ref<Row[]>([]) as { value: Row[] };
+  // 断言成 Ref<Row[]>：ref 的深层解包会把 Row 里的对象属性也 Unwrap 掉，
+  // 模板里访问 row.xxx 就会全线报错
+  const rows = ref<Row[]>([]) as Ref<Row[]>;
   const total = ref(0);
   const page = ref(1);
   const pageSize = ref(options?.pageSize ?? 20);

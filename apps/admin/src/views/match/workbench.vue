@@ -135,7 +135,7 @@
               :total="total"
               layout="total, prev, pager, next"
               background
-              @current-change="(p) => { page = p; run(); }"
+              @current-change="(p: number) => { page = p; run(); }"
             />
           </div>
         </div>

@@ -70,7 +70,7 @@
         <template #default="{ row }">{{ row.heightCm ? `${row.heightCm} cm` : '-' }}</template>
       </el-table-column>
       <el-table-column label="学历" width="100">
-        <template #default="{ row }">{{ row.education ? EDUCATION_LABEL[row.education] : '-' }}</template>
+        <template #default="{ row }">{{ educationLabel(row.education) }}</template>
       </el-table-column>
       <el-table-column prop="occupation" label="职业" min-width="110" show-overflow-tooltip />
       <el-table-column prop="cityName" label="城市" width="100" />
@@ -118,6 +118,7 @@ import {
   GENDER_LABEL,
   PROFILE_SOURCE_LABEL,
   PROFILE_STATUS_LABEL,
+  type Education,
   type MatchmakerDto,
   type ProfileBriefDto,
 } from '@yuanqiao/shared';
@@ -128,6 +129,10 @@ import RegionCascader from '@/components/RegionCascader.vue';
 import { usePagedTable } from '@/composables/usePagedTable';
 
 const regionValue = ref<string[]>([]);
+
+function educationLabel(e: Education | null): string {
+  return e ? (EDUCATION_LABEL[e] ?? e) : '-';
+}
 
 const { rows, total, page, pageSize, loading, query, load, search, reset, onPageChange, onSizeChange } =
   usePagedTable<ProfileBriefDto, ProfileQuery>((q) => profileApi.list(q), {
