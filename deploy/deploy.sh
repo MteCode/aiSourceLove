@@ -235,11 +235,14 @@ sudo certbot --nginx -d $domain --non-interactive --agree-tos --redirect \
 # 证书 90 天有效，certbot 装好后会自带 systemd timer 自动续期，这里确认它开着
 sudo systemctl enable --now certbot.timer 2>/dev/null || true
 sudo certbot renew --dry-run 2>&1 | tail -3
-REMOTE
-  c_ok "HTTPS 已启用"
 
-  c_info "把后端的对外地址改成 https"
-  $SSH "cd $REMOTE_DIR && sed -i 's|^PUBLIC_BASE_URL=.*|PUBLIC_BASE_URL=https://$domain|' .env && sudo systemctl restart yuanqiao"
+# 必须和签证书在同一段里做完：接口下发的图片地址是用 PUBLIC_BASE_URL 拼的，
+# 页面走 https 而图片还是 http，浏览器按混合内容直接拦掉，图全裂且控制台没有网络请求。
+cd $REMOTE_DIR
+sed -i "s|^PUBLIC_BASE_URL=.*|PUBLIC_BASE_URL=https://$domain|" .env
+sudo systemctl restart yuanqiao
+REMOTE
+  c_ok "HTTPS 已启用，PUBLIC_BASE_URL 已同步"
 
   echo
   c_ok "完成 → https://$domain"
@@ -296,12 +299,30 @@ restart_app() {
 }
 
 show_status() {
-  $SSH "bash -s" <<'REMOTE'
+  # heredoc 用引号包着不做本地展开，所以 REMOTE_DIR 得当参数传进去
+  $SSH "bash -s -- $REMOTE_DIR" <<'REMOTE'
+cd "$1" || exit 1
 echo "=== systemd ==="
 systemctl is-active yuanqiao && systemctl status yuanqiao --no-pager -n 5 | tail -6
 echo
 echo "=== 容器 ==="
 (docker ps --format "table {{.Names}}\t{{.Status}}" 2>/dev/null || sudo docker ps --format "table {{.Names}}\t{{.Status}}")
+echo
+echo "=== 对外地址一致性 ==="
+# 这一项单独检查，是因为它错了不会报错，只会让页面上的图全裂：
+# 接口下发的图片地址用 PUBLIC_BASE_URL 拼，站点是 https 而它是 http 时，
+# 浏览器按混合内容静默拦截，服务端日志里什么都看不到。
+BASE=$(grep -m1 "^PUBLIC_BASE_URL=" .env | cut -d= -f2-)
+echo "PUBLIC_BASE_URL = $BASE"
+# 用"443 有没有在监听"判断是否已上 HTTPS——读 /etc/letsencrypt 要 root
+if ss -lnt 2>/dev/null | grep -q ":443 "; then
+  if [ "${BASE#https://}" = "$BASE" ]; then
+    echo "  !! 已装 HTTPS 证书，但 PUBLIC_BASE_URL 还是 http —— 图片会被浏览器当混合内容拦掉"
+    echo "     修：./deploy/deploy.sh https <域名>"
+  else
+    echo "  与 HTTPS 一致"
+  fi
+fi
 echo
 echo "=== 健康检查 ==="
 curl -s -m 5 http://127.0.0.1:3000/health || echo "后端无响应"
