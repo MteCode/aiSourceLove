@@ -56,9 +56,13 @@ export type ChildrenStatus = (typeof ChildrenStatus)[keyof typeof ChildrenStatus
  * 新增层级要同步改 EDUCATION_RANK。
  */
 export declare const Education: {
-    /** 高中及以下 */
+    /** 小学 */
+    readonly PRIMARY_SCHOOL: "PRIMARY_SCHOOL";
+    /** 初中 */
+    readonly JUNIOR_HIGH: "JUNIOR_HIGH";
+    /** 高中（含中专、职高） */
     readonly HIGH_SCHOOL: "HIGH_SCHOOL";
-    /** 大专 */
+    /** 专科 */
     readonly JUNIOR_COLLEGE: "JUNIOR_COLLEGE";
     /** 本科 */
     readonly BACHELOR: "BACHELOR";

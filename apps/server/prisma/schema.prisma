@@ -46,6 +46,8 @@ enum ChildrenStatus {
 }
 
 enum Education {
+  PRIMARY_SCHOOL
+  JUNIOR_HIGH
   HIGH_SCHOOL
   JUNIOR_COLLEGE
   BACHELOR

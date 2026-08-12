@@ -21,8 +21,10 @@ exports.CHILDREN_LABEL = {
     [enums_1.ChildrenStatus.WITH_OTHER]: '有子女（不随自己）',
 };
 exports.EDUCATION_LABEL = {
-    [enums_1.Education.HIGH_SCHOOL]: '高中及以下',
-    [enums_1.Education.JUNIOR_COLLEGE]: '大专',
+    [enums_1.Education.PRIMARY_SCHOOL]: '小学',
+    [enums_1.Education.JUNIOR_HIGH]: '初中',
+    [enums_1.Education.HIGH_SCHOOL]: '高中',
+    [enums_1.Education.JUNIOR_COLLEGE]: '专科',
     [enums_1.Education.BACHELOR]: '本科',
     [enums_1.Education.MASTER]: '硕士',
     [enums_1.Education.DOCTOR]: '博士',

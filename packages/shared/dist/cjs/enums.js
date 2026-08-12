@@ -56,9 +56,13 @@ exports.ChildrenStatus = {
  * 新增层级要同步改 EDUCATION_RANK。
  */
 exports.Education = {
-    /** 高中及以下 */
+    /** 小学 */
+    PRIMARY_SCHOOL: 'PRIMARY_SCHOOL',
+    /** 初中 */
+    JUNIOR_HIGH: 'JUNIOR_HIGH',
+    /** 高中（含中专、职高） */
     HIGH_SCHOOL: 'HIGH_SCHOOL',
-    /** 大专 */
+    /** 专科 */
     JUNIOR_COLLEGE: 'JUNIOR_COLLEGE',
     /** 本科 */
     BACHELOR: 'BACHELOR',
@@ -68,11 +72,13 @@ exports.Education = {
     DOCTOR: 'DOCTOR',
 };
 exports.EDUCATION_RANK = {
-    [exports.Education.HIGH_SCHOOL]: 1,
-    [exports.Education.JUNIOR_COLLEGE]: 2,
-    [exports.Education.BACHELOR]: 3,
-    [exports.Education.MASTER]: 4,
-    [exports.Education.DOCTOR]: 5,
+    [exports.Education.PRIMARY_SCHOOL]: 1,
+    [exports.Education.JUNIOR_HIGH]: 2,
+    [exports.Education.HIGH_SCHOOL]: 3,
+    [exports.Education.JUNIOR_COLLEGE]: 4,
+    [exports.Education.BACHELOR]: 5,
+    [exports.Education.MASTER]: 6,
+    [exports.Education.DOCTOR]: 7,
 };
 /** 房产 */
 exports.HouseStatus = {

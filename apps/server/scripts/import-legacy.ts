@@ -17,6 +17,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { basename } from 'node:path';
+import { REGIONS } from '../prisma/regions';
 import { PrismaClient, Gender, Education, MaritalStatus, HouseStatus, CarStatus, ProfileStatus, ProfileSource, AuditStatus } from '@prisma/client';
 
 const prisma = new PrismaClient();
@@ -34,20 +35,23 @@ type Row = Partial<Record<(typeof COLUMNS)[number], string>>;
 
 // ── 枚举映射 ──
 // 老库这几列是自由文本，运营手填了十几种写法，这里穷举收敛。
-const EDUCATION_MAP: Record<string, Education> = {
-  初中: Education.HIGH_SCHOOL, // 我们没有初中档，向上归到最低档
-  高中: Education.HIGH_SCHOOL,
-  中专: Education.HIGH_SCHOOL,
-  职高: Education.HIGH_SCHOOL,
-  大专: Education.JUNIOR_COLLEGE,
-  专科: Education.JUNIOR_COLLEGE,
-  本科: Education.BACHELOR,
-  专升本: Education.BACHELOR,
-  专生本: Education.BACHELOR,
-  硕士: Education.MASTER,
-  研究生: Education.MASTER,
-  博士: Education.DOCTOR,
-};
+// 顺序有意义：兜底匹配按这个顺序找关键字，长/高的写法要排在被它包含的写法前面
+// （"专升本"必须先于"专"命中，"研究生"必须先于"生"）
+const EDUCATION_MAP: [string, Education][] = [
+  ['小学', Education.PRIMARY_SCHOOL],
+  ['初中', Education.JUNIOR_HIGH],
+  ['专升本', Education.BACHELOR],
+  ['专生本', Education.BACHELOR],
+  ['研究生', Education.MASTER],
+  ['博士', Education.DOCTOR],
+  ['硕士', Education.MASTER],
+  ['本科', Education.BACHELOR],
+  ['大专', Education.JUNIOR_COLLEGE],
+  ['专科', Education.JUNIOR_COLLEGE],
+  ['高中', Education.HIGH_SCHOOL],
+  ['中专', Education.HIGH_SCHOOL],
+  ['职高', Education.HIGH_SCHOOL],
+];
 
 const MARITAL_MAP: Record<string, MaritalStatus> = {
   未婚: MaritalStatus.SINGLE,
@@ -82,24 +86,21 @@ function num(v: string | undefined): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-/** 老库 education 是自由文本，先精确命中，再按关键字兜底（"复旦硕士研究生"这类） */
+/** 老库 education 是自由文本，按关键字命中（"复旦硕士研究生"这类） */
 function toEducation(v: string | undefined): Education | null {
   if (!v) return null;
-  if (EDUCATION_MAP[v]) return EDUCATION_MAP[v];
-  for (const [k, e] of Object.entries(EDUCATION_MAP)) {
-    if (v.includes(k)) return e;
-  }
-  return null;
+  return EDUCATION_MAP.find(([k]) => v.includes(k))?.[1] ?? null;
 }
 
 /**
- * 老库 birthday 只有出生年（integer），没有月日。
- * 统一补 7 月 1 日：年中取值，算出来的年龄误差最多半岁，不会系统性偏大或偏小。
+ * 老库 birthday 只有出生年（integer），没有月日，我们也不编。
+ * 落库统一记成当年 1 月 1 日 —— 这是"只有年份"的常规表示，
+ * 展示和年龄计算都只取年份，不要把这个 1 月 1 日当成真生日显示出去。
  */
 function toBirthday(v: string | undefined): Date | null {
   const y = num(v);
   if (y == null || y < 1940 || y > new Date().getFullYear() - 17) return null;
-  return new Date(Date.UTC(y, 6, 1));
+  return new Date(Date.UTC(y, 0, 1));
 }
 
 /**
@@ -170,22 +171,68 @@ function parsePreference(text: string | undefined): {
   return out;
 }
 
-/** working_location 是自由文本（"辛集"/"石家庄市长安区"/"辛集五险一金"），只做包含匹配，匹不上就只留文本 */
+type Region = { code: string; name: string; level: number; parentCode: string | null };
+/** 一次匹配的结果：省/市/区县三级，匹不上的层级为 null，绝不回落成自由文本 */
+type GeoHit = { province: Region | null; city: Region | null; district: Region | null };
+
+/**
+ * working_location / birth_place 是自由文本（"辛集"、"石家庄市长安区"、"辛集五险一金"），
+ * 拿区划表做包含匹配，匹不上就整个丢掉——宁可地区为空，也不要存一句"澳森办公楼"当城市。
+ *
+ * 难点是歧义："河北石家庄" 里的"河北"会命中天津的河北区。
+ * 所以区县不能单独定胜负：先定省/市，再把区县限制在它的下辖范围内。
+ */
 async function buildRegionMatcher() {
-  // 试跑时数据库可能根本没起，这时候只校验解析逻辑，地区码留空
-  const regions = await prisma.region.findMany({ orderBy: { level: 'desc' } }).catch(() => {
-    console.warn('! 连不上数据库，本次跳过地区码匹配（试跑可忽略）');
-    return [] as { code: string; name: string; level: number; parentCode: string | null }[];
+  // 试跑时数据库可能根本没起，退回种子里的那份区划，匹配结果和真跑一致
+  const regions: Region[] = await prisma.region.findMany().catch(() => {
+    console.warn('! 连不上数据库，改用 prisma/regions.ts 的区划做匹配');
+    return REGIONS.map((r) => ({ code: r.code, name: r.name, level: r.level, parentCode: r.parent ?? null }));
   });
-  // 长名字优先，避免 "河北" 抢在 "石家庄" 前面命中
-  const sorted = regions
-    .map((r) => ({ ...r, key: r.name.replace(/[省市区县自治州]/g, '') }))
-    .filter((r) => r.key.length >= 2)
+
+  const byCode = new Map(regions.map((r) => [r.code, r]));
+  // 去掉行政级别后缀再匹配，"辛集市" 和 "辛集" 才是同一个东西
+  const keyed = regions
+    .map((r) => ({ region: r, key: r.name.replace(/(省|市|区|县|自治州|新区|矿区)$/, '') }))
+    .filter((k) => k.key.length >= 2)
+    // 同级里长名优先，"井陉矿区" 不会被 "井陉县" 抢走
     .sort((a, b) => b.key.length - a.key.length);
 
-  return (text: string | undefined) => {
-    if (!text) return null;
-    return sorted.find((r) => text.includes(r.key)) ?? null;
+  const parentOf = (r: Region | null): Region | null => (r?.parentCode ? byCode.get(r.parentCode) ?? null : null);
+
+  return (text: string | undefined): GeoHit => {
+    const empty: GeoHit = { province: null, city: null, district: null };
+    if (!text) return empty;
+
+    // 一条文本里出现两个地名是常事（"枣强县（预计回辛集）"、"石家庄（可回辛集）"），
+    // 一律取先出现的那个——运营的书写习惯是先写现居地，后面括号里是补充说明
+    const hits = keyed
+      .map((k) => ({ region: k.region, at: text.indexOf(k.key) }))
+      .filter((h) => h.at >= 0)
+      .sort((a, b) => a.at - b.at);
+
+    const cityHit = hits.find((h) => h.region.level === 2) ?? null;
+    const city = cityHit?.region ?? null;
+    const provinceHit = hits.find((h) => h.region.level === 1)?.region ?? null;
+
+    // 区县只在已确定的市/省之下才作数；两者都没确定时才允许区县独立命中
+    // （"辛集五险一金" 就是靠这条走通的）
+    const anchor = city ?? provinceHit;
+    const district =
+      hits.find(({ region: r, at }) => {
+        if (r.level !== 3) return false;
+        if (!anchor) return true;
+        if (anchor.level !== 2) return parentOf(r)?.parentCode === anchor.code;
+        if (r.parentCode !== anchor.code) return false;
+        // 市名和区县名之间只允许隔一两个字（"石家庄市长安区"的"市"、"天津（东丽区）"的括号）。
+        // 隔得远说明是补充说明而不是地址，比如"石家庄（可回辛集）"里的辛集不是现居地。
+        const gap = at - (cityHit!.at + cityHit!.region.name.replace(/(省|市|区|县|自治州|新区|矿区)$/, '').length);
+        return gap >= -2 && gap <= 2;
+      })?.region ?? null;
+
+    const finalCity = city ?? parentOf(district);
+    // 省份优先从市回溯，别信独立命中——"天津市河北区"里的"河北"会命中河北省
+    const finalProvince = parentOf(finalCity) ?? provinceHit;
+    return { province: finalProvince, city: finalCity, district };
   };
 }
 
@@ -201,7 +248,7 @@ async function main(): Promise<void> {
   console.log(`▸ 读到 ${rows.length} 行`);
 
   const matchRegion = await buildRegionMatcher();
-  const stats = { created: 0, updated: 0, skipped: 0, photos: 0, prefs: 0, geo: 0, phone: 0, edu: 0 };
+  const stats = { created: 0, updated: 0, skipped: 0, photos: 0, prefs: 0, geo: 0, district: 0, phone: 0, edu: 0 };
   const skipReasons = new Map<string, number>();
   const skip = (why: string) => {
     stats.skipped++;
@@ -237,11 +284,13 @@ async function main(): Promise<void> {
       maritalStatus: MARITAL_MAP[r.marital_status ?? ''] ?? MaritalStatus.SINGLE,
       houseStatus: toHouse(r.house),
       carStatus: toCar(r.car),
-      cityCode: region?.code ?? null,
-      cityName: r.working_location ?? null,
-      provinceCode: region?.level === 1 ? region.code : region?.parentCode ?? null,
-      hometownCityCode: hometown?.code ?? null,
-      hometownCityName: r.birth_place ?? null,
+      provinceCode: region.province?.code ?? null,
+      cityCode: region.city?.code ?? null,
+      districtCode: region.district?.code ?? null,
+      // 展示名跟着匹配结果走，不落老库原文——原文里混着"澳森办公楼""五险一金"这种非地名
+      cityName: [region.city?.name, region.district?.name].filter(Boolean).join(' ') || null,
+      hometownCityCode: hometown.city?.code ?? null,
+      hometownCityName: [hometown.city?.name, hometown.district?.name].filter(Boolean).join(' ') || null,
       introduction,
       phone: toPhone(r.contact_info),
       // 存量客户是运营线下核实过的，直接置为已通过，不要再压一遍审核队列
@@ -250,7 +299,8 @@ async function main(): Promise<void> {
       lastActiveAt: r.update_time ? new Date(r.update_time) : null,
     };
 
-    if (region) stats.geo++;
+    if (region.city) stats.geo++;
+    if (region.district) stats.district++;
     if (data.phone) stats.phone++;
     if (data.education) stats.edu++;
 
@@ -297,7 +347,7 @@ async function main(): Promise<void> {
     `\n${commit ? '✔ 导入完成' : '（试跑，未写库）'}\n` +
     `  新建 ${stats.created} · 更新 ${stats.updated} · 跳过 ${stats.skipped}\n` +
     `  照片 ${stats.photos} · 择偶要求 ${stats.prefs}\n` +
-    `  命中地区码 ${stats.geo} · 解析出手机号 ${stats.phone} · 学历可映射 ${stats.edu}`,
+    `  匹配到市 ${stats.geo}（其中细到区县 ${stats.district}） · 解析出手机号 ${stats.phone} · 学历可映射 ${stats.edu}`,
   );
   if (skipReasons.size) {
     console.log('  跳过原因：' + [...skipReasons].map(([k, v]) => `${k} ${v}`).join('，'));

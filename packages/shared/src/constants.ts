@@ -41,8 +41,10 @@ export const CHILDREN_LABEL: Record<ChildrenStatus, string> = {
 };
 
 export const EDUCATION_LABEL: Record<Education, string> = {
-  [Education.HIGH_SCHOOL]: '高中及以下',
-  [Education.JUNIOR_COLLEGE]: '大专',
+  [Education.PRIMARY_SCHOOL]: '小学',
+  [Education.JUNIOR_HIGH]: '初中',
+  [Education.HIGH_SCHOOL]: '高中',
+  [Education.JUNIOR_COLLEGE]: '专科',
   [Education.BACHELOR]: '本科',
   [Education.MASTER]: '硕士',
   [Education.DOCTOR]: '博士',

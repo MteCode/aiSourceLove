@@ -18,8 +18,10 @@ export const CHILDREN_LABEL = {
     [ChildrenStatus.WITH_OTHER]: '有子女（不随自己）',
 };
 export const EDUCATION_LABEL = {
-    [Education.HIGH_SCHOOL]: '高中及以下',
-    [Education.JUNIOR_COLLEGE]: '大专',
+    [Education.PRIMARY_SCHOOL]: '小学',
+    [Education.JUNIOR_HIGH]: '初中',
+    [Education.HIGH_SCHOOL]: '高中',
+    [Education.JUNIOR_COLLEGE]: '专科',
     [Education.BACHELOR]: '本科',
     [Education.MASTER]: '硕士',
     [Education.DOCTOR]: '博士',

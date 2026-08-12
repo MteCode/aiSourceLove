@@ -10,6 +10,7 @@
 
 import { PrismaClient, Prisma } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import { REGIONS } from './regions';
 
 const prisma = new PrismaClient();
 const SEED_DEMO = process.env.SEED_DEMO !== 'false';
@@ -64,50 +65,10 @@ const ROLES = [
 ];
 
 // ═══════════════════════════════════════════
-//  2. 行政区划（省份 + 主要城市）
+//  2. 行政区划（省份 + 主要城市 + 河北/京津区县）
 // ═══════════════════════════════════════════
 
-const REGIONS: { code: string; name: string; level: number; parent?: string; lat?: number; lng?: number }[] = [
-  { code: '110000', name: '北京市', level: 1 },
-  { code: '110100', name: '北京市', level: 2, parent: '110000', lat: 39.9042, lng: 116.4074 },
-  { code: '310000', name: '上海市', level: 1 },
-  { code: '310100', name: '上海市', level: 2, parent: '310000', lat: 31.2304, lng: 121.4737 },
-  { code: '440000', name: '广东省', level: 1 },
-  { code: '440100', name: '广州市', level: 2, parent: '440000', lat: 23.1291, lng: 113.2644 },
-  { code: '440300', name: '深圳市', level: 2, parent: '440000', lat: 22.5431, lng: 114.0579 },
-  { code: '440600', name: '佛山市', level: 2, parent: '440000', lat: 23.0219, lng: 113.1214 },
-  { code: '440400', name: '珠海市', level: 2, parent: '440000', lat: 22.271, lng: 113.5767 },
-  { code: '330000', name: '浙江省', level: 1 },
-  { code: '330100', name: '杭州市', level: 2, parent: '330000', lat: 30.2741, lng: 120.1551 },
-  { code: '330200', name: '宁波市', level: 2, parent: '330000', lat: 29.8683, lng: 121.544 },
-  { code: '330300', name: '温州市', level: 2, parent: '330000', lat: 27.9938, lng: 120.6994 },
-  { code: '320000', name: '江苏省', level: 1 },
-  { code: '320100', name: '南京市', level: 2, parent: '320000', lat: 32.0603, lng: 118.7969 },
-  { code: '320500', name: '苏州市', level: 2, parent: '320000', lat: 31.2989, lng: 120.5853 },
-  { code: '320200', name: '无锡市', level: 2, parent: '320000', lat: 31.4912, lng: 120.3119 },
-  { code: '510000', name: '四川省', level: 1 },
-  { code: '510100', name: '成都市', level: 2, parent: '510000', lat: 30.5728, lng: 104.0668 },
-  { code: '420000', name: '湖北省', level: 1 },
-  { code: '420100', name: '武汉市', level: 2, parent: '420000', lat: 30.5928, lng: 114.3055 },
-  { code: '610000', name: '陕西省', level: 1 },
-  { code: '610100', name: '西安市', level: 2, parent: '610000', lat: 34.3416, lng: 108.9398 },
-  { code: '370000', name: '山东省', level: 1 },
-  { code: '370100', name: '济南市', level: 2, parent: '370000', lat: 36.6512, lng: 117.1201 },
-  { code: '370200', name: '青岛市', level: 2, parent: '370000', lat: 36.0671, lng: 120.3826 },
-  { code: '410000', name: '河南省', level: 1 },
-  { code: '410100', name: '郑州市', level: 2, parent: '410000', lat: 34.7466, lng: 113.6254 },
-  { code: '430000', name: '湖南省', level: 1 },
-  { code: '430100', name: '长沙市', level: 2, parent: '430000', lat: 28.2282, lng: 112.9388 },
-  { code: '350000', name: '福建省', level: 1 },
-  { code: '350100', name: '福州市', level: 2, parent: '350000', lat: 26.0745, lng: 119.2965 },
-  { code: '350200', name: '厦门市', level: 2, parent: '350000', lat: 24.4798, lng: 118.0894 },
-  { code: '120000', name: '天津市', level: 1 },
-  { code: '120100', name: '天津市', level: 2, parent: '120000', lat: 39.3434, lng: 117.3616 },
-  { code: '500000', name: '重庆市', level: 1 },
-  { code: '500100', name: '重庆市', level: 2, parent: '500000', lat: 29.5647, lng: 106.5507 },
-  { code: '340000', name: '安徽省', level: 1 },
-  { code: '340100', name: '合肥市', level: 2, parent: '340000', lat: 31.8206, lng: 117.2272 },
-];
+// 区划数据见 ./regions.ts（导入脚本也要用，所以单独成文件）
 
 // ═══════════════════════════════════════════
 //  3. 字段字典
@@ -145,11 +106,13 @@ const FIELDS: FieldSeed[] = [
 
   // ── 工作学业 ──
   { code: 'education', label: '学历', type: 'SELECT', group: 'career', visibility: 0, isCore: true, required: true, sort: 1, weightKey: 'education', isPreference: true, options: [
-    { value: 'HIGH_SCHOOL', label: '高中及以下', score: 1 },
-    { value: 'JUNIOR_COLLEGE', label: '大专', score: 2 },
-    { value: 'BACHELOR', label: '本科', score: 3 },
-    { value: 'MASTER', label: '硕士', score: 4 },
-    { value: 'DOCTOR', label: '博士', score: 5 },
+    { value: 'PRIMARY_SCHOOL', label: '小学', score: 1 },
+    { value: 'JUNIOR_HIGH', label: '初中', score: 2 },
+    { value: 'HIGH_SCHOOL', label: '高中', score: 3 },
+    { value: 'JUNIOR_COLLEGE', label: '专科', score: 4 },
+    { value: 'BACHELOR', label: '本科', score: 5 },
+    { value: 'MASTER', label: '硕士', score: 6 },
+    { value: 'DOCTOR', label: '博士', score: 7 },
   ] },
   { code: 'school', label: '毕业院校', type: 'TEXT', group: 'career', visibility: 2, isCore: true, sort: 2, maxLength: 50 },
   { code: 'occupation', label: '职业', type: 'TEXT', group: 'career', visibility: 1, isCore: true, sort: 3, maxLength: 50 },
@@ -365,7 +328,7 @@ async function seedRegions() {
       update: { name: r.name, lat: r.lat, lng: r.lng, sort: i },
     });
   }
-  console.log(`  ${REGIONS.length} 条（省份 + 主要城市）`);
+  console.log(`  ${REGIONS.length} 条（省份 + 主要城市 + 河北/京津区县）`);
 }
 
 async function seedFields() {
