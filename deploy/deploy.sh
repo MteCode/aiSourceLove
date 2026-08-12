@@ -9,6 +9,11 @@
 #   ./deploy/deploy.sh logs         看后端日志
 #   ./deploy/deploy.sh status       看运行状态
 #
+#   ./deploy/deploy.sh backup-setup  装每日备份 cron（装一次就行）
+#   ./deploy/deploy.sh backup        立即备份一次
+#   ./deploy/deploy.sh backup-verify 校验最近一次备份能不能读
+#   ./deploy/deploy.sh backup-fetch  把远端备份拉到本机（可选，手动触发，绝不自动跑）
+#
 # 前提：本机 ~/.ssh 里有能免密登录目标机的私钥。
 
 set -euo pipefail
@@ -190,6 +195,48 @@ REMOTE
   c_ok "Nginx 已配置（80 端口）"
 }
 
+# ── 备份 ──
+setup_backup() {
+  c_info "安装每日备份 cron"
+  $SSH "bash -s" <<REMOTE
+set -e
+chmod +x $REMOTE_DIR/deploy/backup.sh
+mkdir -p /home/$SSH_USER/backups
+# 每天凌晨 4 点，避开 1/2/3 点那几个业务定时任务
+# 经由临时文件安装：这段脚本本身是从 ssh 的 stdin 喂给 bash 的，
+# 让 crontab 直接从管道读会跟它抢同一个流，装出来是空的。
+TMP=\$(mktemp)
+crontab -l 2>/dev/null | grep -v 'deploy/backup.sh' > "\$TMP" || true
+# 每天凌晨 4 点，避开 1/2/3 点那几个业务定时任务
+echo "0 4 * * * $REMOTE_DIR/deploy/backup.sh all >> /var/log/yuanqiao-backup.log 2>&1" >> "\$TMP"
+crontab "\$TMP"
+rm -f "\$TMP"
+sudo touch /var/log/yuanqiao-backup.log
+sudo chown $SSH_USER:$SSH_USER /var/log/yuanqiao-backup.log
+echo "已装 cron："
+crontab -l | grep backup.sh
+REMOTE
+  c_ok "每日 04:00 自动备份"
+}
+
+run_backup() {
+  c_info "立即执行一次备份"
+  $SSH "$REMOTE_DIR/deploy/backup.sh ${1:-all}"
+}
+
+# 备份和线上数据在同一块盘，只防误删不防盘坏，异地副本得拉到本机
+fetch_backup() {
+  local dir="${YQ_LOCAL_BACKUP:-$LOCAL_DIR/.backups}"
+  c_warn "拉下来的是真实客户资料，别放进仓库、别传到网盘"
+  mkdir -p "$dir"
+  c_info "同步远端备份到 $dir"
+  rsync -az --info=stats2 \
+    -e "ssh -i $SSH_KEY -o StrictHostKeyChecking=accept-new" \
+    "$SSH_USER@$SSH_HOST:/home/$SSH_USER/backups/" "$dir/" 2>/dev/null \
+    || rsync -az -e "ssh -i $SSH_KEY" "$SSH_USER@$SSH_HOST:/home/$SSH_USER/backups/" "$dir/"
+  c_ok "本地副本：$dir（$(du -sh "$dir" | cut -f1)）"
+}
+
 restart_app() {
   c_info "重启后端"
   $SSH "sudo systemctl restart yuanqiao && sleep 3 && systemctl is-active yuanqiao"
@@ -230,5 +277,9 @@ case "${1:-all}" in
   nginx)   setup_nginx ;;
   status)  show_status ;;
   logs)    show_logs ;;
+  backup-setup) push_code; setup_backup; run_backup ;;
+  backup)  run_backup "${2:-all}" ;;
+  backup-verify) run_backup verify ;;
+  backup-fetch)  fetch_backup ;;
   *) c_err "未知命令：$1"; sed -n '3,14p' "$0"; exit 1 ;;
 esac

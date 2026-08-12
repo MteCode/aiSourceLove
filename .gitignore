@@ -60,3 +60,6 @@ apps/client/unpackage/
 
 # Claude Code 个人权限配置，不进仓库
 .claude/settings.local.json
+
+# 从生产拉下来的备份，含真实客户资料，绝不能进仓库
+.backups/
