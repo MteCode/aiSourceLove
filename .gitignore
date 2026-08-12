@@ -45,3 +45,15 @@ apps/admin/src/components.d.ts
 # uni-app 构建产物
 apps/client/dist/
 apps/client/unpackage/
+
+# ───────────────────────────────────────────────
+# 真实客户资料，严禁入库
+# 505 张真人照片 + 相亲档案 PostgreSQL dump。
+# 这些是可识别到具体自然人的个人信息，一旦提交并推到 GitHub 就是
+# 不可逆的泄露（git 历史里删不干净）。导入用的中间产物一并挡掉。
+# ───────────────────────────────────────────────
+/photos/
+/photo.tar
+/xiangqin.dump
+/xiangqin*.sql
+/import-tmp/

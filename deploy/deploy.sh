@@ -107,6 +107,10 @@ export npm_config_cache=$REMOTE_DIR/.npm-cache
 npm install --no-audit --no-fund
 npm run build:shared
 cd apps/server && npx prisma generate && npx nest build
+cd $REMOTE_DIR
+# 两个前端也必须构建：nginx 发的是它们的产物目录，漏掉就是 404
+npm run build:admin
+npm run build:client
 REMOTE
   c_ok "构建完成"
 }
@@ -128,6 +132,13 @@ setup_service() {
   c_info "安装 systemd 服务"
   $SSH "bash -s" <<REMOTE
 set -e
+# systemd 不走登录 shell，PATH 里没有 /usr/local/bin，
+# 必须把 node 的真实路径解析出来写进 unit，否则 203/EXEC
+NODE_BIN=\$(command -v node)
+if [ -z "\$NODE_BIN" ]; then
+  echo "找不到 node，请先安装" >&2
+  exit 1
+fi
 sudo tee /etc/systemd/system/yuanqiao.service >/dev/null <<UNIT
 [Unit]
 Description=YuanQiao API (缘桥)
@@ -139,7 +150,7 @@ Type=simple
 User=$SSH_USER
 WorkingDirectory=$REMOTE_DIR/apps/server
 EnvironmentFile=$REMOTE_DIR/.env
-ExecStart=/usr/bin/node dist/main.js
+ExecStart=\$NODE_BIN dist/main.js
 Restart=always
 RestartSec=5
 StandardOutput=append:/var/log/yuanqiao.log
