@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { WX_LOGIN_ENABLED } from '@/utils/feature';
 import { onLoad } from '@dcloudio/uni-app';
 import { computed, ref } from 'vue';
 import { SMS_CODE_INTERVAL_SECONDS } from '@yuanqiao/shared';
@@ -110,7 +111,7 @@ function afterLogin(): void {
       <button class="btn btn--primary" :disabled="!canLogin" @tap="loginBySms">登录 / 注册</button>
 
       <!-- #ifdef MP-WEIXIN -->
-      <button class="btn btn--wx" @tap="loginByWx">微信一键登录</button>
+      <button v-if="WX_LOGIN_ENABLED" class="btn btn--wx" @tap="loginByWx">微信一键登录</button>
       <!-- #endif -->
 
       <view class="agree" @tap="agreed = !agreed">

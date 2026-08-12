@@ -11,6 +11,7 @@ import {
   type ProfileDto,
 } from '@yuanqiao/shared';
 import { BENEFIT_EXHAUSTED, ApiError, profileApi } from '@/api';
+import { goVip, promptUpgrade } from '@/utils/feature';
 import { useUserStore } from '@/stores/user';
 import { formatIncome, isMaskedValue, plain } from '@/utils/format';
 import { confirm, hideLoading, loading, toast } from '@/utils/ui';
@@ -58,7 +59,7 @@ async function load(): Promise<void> {
     // 每日查看配额用完是最典型的付费触点，要给引导而不是干巴巴报错
     if (err.code === BENEFIT_EXHAUSTED) {
       failed.value = err.message || '今日查看次数已用完';
-      const go = await confirm(`${failed.value}，开通会员可获得更多查看次数`, '查看次数不足');
+      const go = await promptUpgrade(failed.value, '查看次数不足');
       if (go) uni.navigateTo({ url: '/pages/vip/index' });
     } else {
       failed.value = err.message || '资料加载失败';
@@ -80,7 +81,7 @@ async function unlockContact(): Promise<void> {
   } catch (e) {
     const err = e as ApiError;
     if (err.code === BENEFIT_EXHAUSTED) {
-      const go = await confirm(`${err.message}，开通会员可获得解锁次数`, '解锁次数不足');
+      const go = await promptUpgrade(err.message, '解锁次数不足');
       if (go) uni.navigateTo({ url: '/pages/vip/index' });
     } else {
       toast(err.message || '解锁失败');
@@ -98,9 +99,7 @@ function copy(text: string): void {
   uni.setClipboardData({ data: text, success: () => toast('已复制') });
 }
 
-function goVip(): void {
-  uni.navigateTo({ url: '/pages/vip/index' });
-}
+// 支付未开时 goVip 会给替代路径（找红娘），不会跳到用不了的页面
 </script>
 
 <template>

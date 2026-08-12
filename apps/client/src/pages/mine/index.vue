@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { PAY_ENABLED } from '@/utils/feature';
 import { onShow } from '@dcloudio/uni-app';
 import { computed, ref } from 'vue';
 import { PROFILE_STATUS_LABEL, ProfileStatus } from '@yuanqiao/shared';
@@ -97,8 +98,8 @@ function goto(url: string): void {
       <text class="status-tip yq-muted">{{ statusTip }}</text>
     </view>
 
-    <!-- VIP 卡片 -->
-    <view class="vip-card" @tap="go('/pages/vip/index')">
+    <!-- VIP 卡片。支付未开时整块不渲染——留个点不动的卡片比没有更糟 -->
+    <view v-if="PAY_ENABLED" class="vip-card" @tap="go('/pages/vip/index')">
       <view>
         <text class="vip-title">{{ user.isVip ? '续费会员' : '开通会员' }}</text>
         <text class="vip-sub">解锁联系方式 · AI 精准匹配 · 查看访客</text>
@@ -108,18 +109,18 @@ function goto(url: string): void {
 
     <!-- 功能入口 -->
     <view class="yq-card">
-      <view class="row" @tap="go('/pages/vip/benefits')">
+      <view v-if="PAY_ENABLED" class="row" @tap="go('/pages/vip/benefits')">
         <text class="row-label">我的权益</text>
         <text class="arrow">›</text>
       </view>
       <view class="row" @tap="go('/pages/mine/visitors')">
         <text class="row-label">谁看过我</text>
         <view class="row-right">
-          <yq-tag v-if="!user.isVip" type="warning">VIP</yq-tag>
+          <yq-tag v-if="PAY_ENABLED && !user.isVip" type="warning">VIP</yq-tag>
           <text class="arrow">›</text>
         </view>
       </view>
-      <view class="row" @tap="go('/pages/order/list')">
+      <view v-if="PAY_ENABLED" class="row" @tap="go('/pages/order/list')">
         <text class="row-label">我的订单</text>
         <text class="arrow">›</text>
       </view>

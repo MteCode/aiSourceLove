@@ -3,6 +3,7 @@ import { onReachBottom, onShow } from '@dcloudio/uni-app';
 import { ref } from 'vue';
 import type { MatchResultDto } from '@yuanqiao/shared';
 import { ApiError, BENEFIT_EXHAUSTED, matchApi } from '@/api';
+import { promptUpgrade } from '@/utils/feature';
 import { useUserStore } from '@/stores/user';
 import { confirm, toast } from '@/utils/ui';
 
@@ -57,7 +58,7 @@ async function load(reset = false): Promise<void> {
     const err = e as ApiError;
     if (err.code === BENEFIT_EXHAUSTED) {
       enableAi.value = false;
-      const go = await confirm(`${err.message}，开通会员可获得每日 AI 匹配次数`, 'AI 次数不足');
+      const go = await promptUpgrade(err.message, 'AI 次数不足');
       if (go) uni.navigateTo({ url: '/pages/vip/index' });
       else void load(true);
     } else {

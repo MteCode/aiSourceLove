@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { goVip } from '@/utils/feature';
 import { onShow } from '@dcloudio/uni-app';
 import { ref } from 'vue';
 import type { ProfileBriefDto } from '@yuanqiao/shared';
@@ -34,7 +35,7 @@ function goto(url: string): void {
   <view class="yq-page">
     <yq-empty v-if="denied || !user.isVip" icon="👀" text="「谁看过我」是会员专属功能">
       <text class="tip yq-muted">开通后可以看到最近谁浏览过你的资料</text>
-      <button class="btn" @tap="goto('/pages/vip/index')">去开通会员</button>
+      <button class="btn" @tap="goVip">去开通会员</button>
     </yq-empty>
 
     <template v-else>
