@@ -177,6 +177,9 @@ set -e
 if ! command -v nginx >/dev/null 2>&1; then
   sudo apt-get update -qq && sudo apt-get install -y -qq nginx
 fi
+# nginx 以 www-data 跑，要能穿过家目录才读得到静态文件和上传目录。
+# Ubuntu 默认 /home/<user> 是 750，不加这一下首页直接 500。
+sudo chmod o+x "\$(dirname $REMOTE_DIR)"
 sudo cp $REMOTE_DIR/deploy/nginx.conf /etc/nginx/sites-available/yuanqiao
 sudo sed -i "s|__ROOT__|$REMOTE_DIR|g; s|__SERVER_NAME__|$SSH_HOST|g" /etc/nginx/sites-available/yuanqiao
 sudo ln -sf /etc/nginx/sites-available/yuanqiao /etc/nginx/sites-enabled/yuanqiao
