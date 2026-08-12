@@ -10,6 +10,8 @@ apps/client       uni-app + Vue3 会员端（微信小程序 / H5）
 deploy            Nginx 配置与部署脚本
 ```
 
+**项目进度与待办清单见 [docs/进度.md](docs/进度.md)**，每完成一项就更新那份文档。
+
 ## 六大模块
 
 | 模块 | 说明 |
