@@ -9,7 +9,23 @@ import { toast } from '@/utils/ui';
  * 差别是小程序没有 axios，也没有 cookie，全靠 header 带 token。
  */
 
+/**
+ * 请求基址。
+ *
+ * H5 与后端同域，走相对路径 `/api`，由 Nginx 反代，不存在跨域。
+ * 小程序里相对路径是无效的——它没有「当前页面所在域」这个概念，
+ * uni.request 拿到 `/api/xxx` 会直接失败。所以小程序必须用完整绝对地址，
+ * 且该域名要在微信公众平台配成 request 合法域名。
+ *
+ * 这里用编译期常量分支而不是运行时判断：条件编译会把另一个分支整段删掉，
+ * 打 H5 的包里不会残留小程序的域名。
+ */
+// #ifdef MP-WEIXIN
+const BASE = import.meta.env.VITE_API_BASE_MP || import.meta.env.VITE_API_BASE || '/api';
+// #endif
+// #ifndef MP-WEIXIN
 const BASE = import.meta.env.VITE_API_BASE || '/api';
+// #endif
 
 /** 权益耗尽的错误码，页面据此弹「开通 VIP」引导而不是普通报错 */
 export const BENEFIT_EXHAUSTED = 40301;

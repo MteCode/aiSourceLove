@@ -14,6 +14,8 @@
 #   ./deploy/deploy.sh backup-verify 校验最近一次备份能不能读
 #   ./deploy/deploy.sh backup-fetch  把远端备份拉到本机（可选，手动触发，绝不自动跑）
 #
+#   ./deploy/deploy.sh https <域名>  签 HTTPS 证书并开启 80→443 跳转
+#
 # 前提：本机 ~/.ssh 里有能免密登录目标机的私钥。
 
 set -euo pipefail
@@ -195,6 +197,56 @@ REMOTE
   c_ok "Nginx 已配置（80 端口）"
 }
 
+# ── HTTPS ──
+# 前提：域名已解析到本机 IP，且已完成 ICP 备案。
+# 没备案的话腾讯云会拦掉 80 端口，certbot 的 HTTP-01 验证根本走不通，
+# 报错会是「Timeout during connect」，看起来像防火墙问题，其实是备案问题。
+setup_https() {
+  local domain="${1:-}"
+  if [ -z "$domain" ]; then
+    c_err "用法：./deploy/deploy.sh https your-domain.com"
+    exit 1
+  fi
+
+  c_info "检查 $domain 是否解析到本机"
+  local resolved
+  resolved=$(dig +short "$domain" A 2>/dev/null | tail -1)
+  if [ "$resolved" != "$SSH_HOST" ]; then
+    c_warn "$domain 解析到 ${resolved:-（无记录）}，而服务器是 $SSH_HOST"
+    c_warn "DNS 没生效就签不了证书。确认腾讯云 DNS 里 A 记录指向 $SSH_HOST 再重试。"
+    exit 1
+  fi
+  c_ok "解析正确"
+
+  $SSH "bash -s" <<REMOTE
+set -e
+if ! command -v certbot >/dev/null 2>&1; then
+  sudo apt-get update -qq && sudo apt-get install -y -qq certbot python3-certbot-nginx
+fi
+
+# 先把 server_name 换成真域名，certbot --nginx 是靠它定位 server 块的
+sudo sed -i "s/server_name .*/server_name $domain;/" /etc/nginx/sites-available/yuanqiao
+sudo nginx -t && sudo systemctl reload nginx
+
+# --redirect 自动加 80→443 跳转；小程序和微信支付回调都强制 https，必须有
+sudo certbot --nginx -d $domain --non-interactive --agree-tos --redirect \
+  --register-unsafely-without-email
+
+# 证书 90 天有效，certbot 装好后会自带 systemd timer 自动续期，这里确认它开着
+sudo systemctl enable --now certbot.timer 2>/dev/null || true
+sudo certbot renew --dry-run 2>&1 | tail -3
+REMOTE
+  c_ok "HTTPS 已启用"
+
+  c_info "把后端的对外地址改成 https"
+  $SSH "cd $REMOTE_DIR && sed -i 's|^PUBLIC_BASE_URL=.*|PUBLIC_BASE_URL=https://$domain|' .env && sudo systemctl restart yuanqiao"
+
+  echo
+  c_ok "完成 → https://$domain"
+  c_warn "小程序还要：把 $domain 填进 apps/client/.env.production 的 VITE_API_BASE_MP，"
+  c_warn "然后 npm run build:mp；并在微信公众平台配 request 合法域名。"
+}
+
 # ── 备份 ──
 setup_backup() {
   c_info "安装每日备份 cron"
@@ -281,5 +333,6 @@ case "${1:-all}" in
   backup)  run_backup "${2:-all}" ;;
   backup-verify) run_backup verify ;;
   backup-fetch)  fetch_backup ;;
+  https)   setup_https "${2:-}" ;;
   *) c_err "未知命令：$1"; sed -n '3,14p' "$0"; exit 1 ;;
 esac
