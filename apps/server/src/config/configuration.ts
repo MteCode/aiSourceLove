@@ -124,7 +124,7 @@ export default (): AppConfig => {
       embeddingApiKey: process.env.AI_EMBEDDING_API_KEY ?? '',
       embeddingModel: process.env.AI_EMBEDDING_MODEL ?? 'text-embedding-v3',
       embeddingDim: int(process.env.AI_EMBEDDING_DIM, 1024),
-      embeddingBatchSize: int(process.env.AI_EMBEDDING_BATCH_SIZE, 25),
+      embeddingBatchSize: int(process.env.AI_EMBEDDING_BATCH_SIZE, 10),
       // 推理型模型出字慢，单次三四十秒是常态，20 秒的默认值会把正常请求判成超时
       timeoutMs: int(process.env.AI_TIMEOUT_MS, 60000),
     },

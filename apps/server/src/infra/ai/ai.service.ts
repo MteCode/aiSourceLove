@@ -2,12 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { AppConfig } from '@/config/configuration';
 import { RedisService } from '@/infra/redis/redis.service';
-import {
-  AiProvider,
-  ChatMessage,
-  MockAiProvider,
-  OpenAiCompatProvider,
-} from './ai.provider';
+import { AiProvider, ChatMessage, createAiProviders } from './ai.provider';
 
 /**
  * AI 服务。对上层只暴露"要向量"和"要一句推荐理由"，
@@ -35,51 +30,12 @@ export class AiService {
     private readonly redis: RedisService,
   ) {
     const ai = this.config.get('ai', { infer: true });
-    const mock = new MockAiProvider(256);
+    const { chat, embed, chatNote, embedNote } = createAiProviders(ai);
+    this.provider = chat;
+    this.embedProvider = embed;
 
-    // ── 对话通道 ──
-    if (ai.provider === 'openai-compatible' && ai.apiKey) {
-      this.provider = new OpenAiCompatProvider({
-        chatBaseUrl: ai.baseUrl,
-        chatApiKey: ai.apiKey,
-        chatModel: ai.chatModel,
-        // 这个实例只用来 chat，下面的 embedding 字段填了也不会走到
-        embeddingBaseUrl: ai.embeddingBaseUrl || ai.baseUrl,
-        embeddingApiKey: ai.embeddingApiKey || ai.apiKey,
-        embeddingModel: ai.embeddingModel,
-        embeddingDim: ai.embeddingDim,
-        embeddingBatchSize: ai.embeddingBatchSize,
-        timeoutMs: ai.timeoutMs,
-      });
-      this.logger.log(`AI 对话：${ai.chatModel} @ ${ai.baseUrl}`);
-    } else {
-      this.provider = mock;
-      this.logger.warn('AI 对话：mock（未配置 AI_API_KEY），推荐理由是模板拼的');
-    }
-
-    // ── 向量通道 ──
-    // 必须显式配了 embedding 的 key 才启用真模型。
-    // 不从对话 key 自动推导：对话供应商很可能根本没有 embedding 接口，
-    // 推导过去的结果是每次匹配都去打一个 404/503 的地址，白白拖慢请求。
-    if (ai.embeddingApiKey && (ai.embeddingBaseUrl || ai.baseUrl)) {
-      this.embedProvider = new OpenAiCompatProvider({
-        chatBaseUrl: ai.embeddingBaseUrl || ai.baseUrl,
-        chatApiKey: ai.embeddingApiKey,
-        chatModel: ai.chatModel,
-        embeddingBaseUrl: ai.embeddingBaseUrl || ai.baseUrl,
-        embeddingApiKey: ai.embeddingApiKey,
-        embeddingModel: ai.embeddingModel,
-        embeddingDim: ai.embeddingDim,
-        embeddingBatchSize: ai.embeddingBatchSize,
-        timeoutMs: ai.timeoutMs,
-      });
-      this.logger.log(`AI 向量：${ai.embeddingModel} @ ${ai.embeddingBaseUrl || ai.baseUrl}`);
-    } else {
-      this.embedProvider = mock;
-      this.logger.warn(
-        'AI 向量：mock（未配置 AI_EMBEDDING_API_KEY）。语义匹配退化为词面重合度，L1+L2 不受影响。',
-      );
-    }
+    (chat.isReal ? this.logger.log : this.logger.warn).call(this.logger, `AI 对话：${chatNote}`);
+    (embed.isReal ? this.logger.log : this.logger.warn).call(this.logger, `AI 向量：${embedNote}`);
   }
 
   get isReal(): boolean {

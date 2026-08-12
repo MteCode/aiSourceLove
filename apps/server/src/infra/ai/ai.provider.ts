@@ -32,6 +32,64 @@ export interface AiProvider {
 
 export const AI_PROVIDER = Symbol('AI_PROVIDER');
 
+/** 构造 provider 需要的配置，形状与 AppConfig['ai'] 一致 */
+export interface AiProviderConfig {
+  provider: 'mock' | 'openai-compatible';
+  baseUrl: string;
+  apiKey: string;
+  chatModel: string;
+  embeddingBaseUrl: string;
+  embeddingApiKey: string;
+  embeddingModel: string;
+  embeddingDim: number;
+  embeddingBatchSize: number;
+  timeoutMs: number;
+}
+
+/**
+ * 从配置挑出对话和向量两条通道。
+ *
+ * 抽成普通函数而不是留在 AiService 里，是为了让离线脚本也能用同一套选择逻辑——
+ * 脚本走 tsx，esbuild 不生成 design:paramtypes，Nest 的依赖注入在那儿是失效的，
+ * 但业务规则不该因此在脚本里被复制一遍然后慢慢跑偏。
+ */
+export function createAiProviders(ai: AiProviderConfig): {
+  chat: AiProvider;
+  embed: AiProvider;
+  chatNote: string;
+  embedNote: string;
+} {
+  const mock = new MockAiProvider(256);
+  const build = (baseUrl: string, key: string) =>
+    new OpenAiCompatProvider({
+      chatBaseUrl: baseUrl,
+      chatApiKey: key,
+      chatModel: ai.chatModel,
+      embeddingBaseUrl: ai.embeddingBaseUrl || ai.baseUrl,
+      embeddingApiKey: ai.embeddingApiKey || key,
+      embeddingModel: ai.embeddingModel,
+      embeddingDim: ai.embeddingDim,
+      embeddingBatchSize: ai.embeddingBatchSize,
+      timeoutMs: ai.timeoutMs,
+    });
+
+  const chatReal = ai.provider === 'openai-compatible' && !!ai.apiKey;
+  // 向量必须显式配了自己的 key 才启用真模型：对话供应商常常根本没有 embedding 接口
+  // （DeepSeek 没有，多数中转分组也没有），从对话 key 推导过去只会每次都打一个 404/503。
+  const embedReal = !!ai.embeddingApiKey && !!(ai.embeddingBaseUrl || ai.baseUrl);
+
+  return {
+    chat: chatReal ? build(ai.baseUrl, ai.apiKey) : mock,
+    embed: embedReal ? build(ai.embeddingBaseUrl || ai.baseUrl, ai.embeddingApiKey) : mock,
+    chatNote: chatReal
+      ? `${ai.chatModel} @ ${ai.baseUrl}`
+      : 'mock（未配置 AI_API_KEY），推荐理由是模板拼的',
+    embedNote: embedReal
+      ? `${ai.embeddingModel} @ ${ai.embeddingBaseUrl || ai.baseUrl}`
+      : 'mock（未配置 AI_EMBEDDING_API_KEY）。语义匹配退化为词面重合度，L1+L2 不受影响',
+  };
+}
+
 // ─────────────────────────────────────────────
 //  Mock 实现
 // ─────────────────────────────────────────────
@@ -115,7 +173,7 @@ export interface OpenAiCompatOptions {
   embeddingModel: string;
   embeddingDim: number;
   timeoutMs?: number;
-  /** embedding 接口单次最多几条文本。通义 25，OpenAI 2048，取小的更安全 */
+  /** embedding 接口单次最多几条文本。通义实测是 10（文档写 25，以报错为准），OpenAI 2048 */
   embeddingBatchSize?: number;
   /** 遇到 429 / 5xx 重试几次 */
   maxRetries?: number;
@@ -135,9 +193,10 @@ export class OpenAiCompatProvider implements AiProvider {
     const url = `${this.opts.embeddingBaseUrl.replace(/\/$/, '')}/embeddings`;
     const out = new Array<number[]>(texts.length);
 
-    // 必须分批：各家 embedding 接口都有单次条数上限（通义 25 条、OpenAI 2048 条），
-    // 匹配时一次要算几百上千条文本，整包发过去必被拒。
-    const size = this.opts.embeddingBatchSize ?? 25;
+    // 必须分批：各家 embedding 接口都有单次条数上限，匹配时一次要算几百上千条文本，
+    // 整包发过去必被拒。通义 text-embedding-v3 实测上限是 10
+    // （文档写 25，但 11 条就报 batch size ... should not be larger than 10），所以默认取 10。
+    const size = this.opts.embeddingBatchSize ?? 10;
     for (let start = 0; start < texts.length; start += size) {
       const slice = texts.slice(start, start + size);
       const res = await this.fetchJson<{ data: { embedding: number[]; index: number }[] }>(url, {
