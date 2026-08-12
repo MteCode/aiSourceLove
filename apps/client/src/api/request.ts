@@ -17,14 +17,13 @@ import { toast } from '@/utils/ui';
  * uni.request 拿到 `/api/xxx` 会直接失败。所以小程序必须用完整绝对地址，
  * 且该域名要在微信公众平台配成 request 合法域名。
  *
- * 这里用编译期常量分支而不是运行时判断：条件编译会把另一个分支整段删掉，
- * 打 H5 的包里不会残留小程序的域名。
+ * 用条件编译而不是运行时判断，打 H5 的包里就不会残留小程序的域名。
+ * 注意只能是「先声明再覆盖」，不能写成两个分支各声明一次——
+ * 条件编译是注释预处理，tsc 看得见两个分支，会判重复声明。
  */
+let BASE = import.meta.env.VITE_API_BASE || '/api';
 // #ifdef MP-WEIXIN
-const BASE = import.meta.env.VITE_API_BASE_MP || import.meta.env.VITE_API_BASE || '/api';
-// #endif
-// #ifndef MP-WEIXIN
-const BASE = import.meta.env.VITE_API_BASE || '/api';
+BASE = import.meta.env.VITE_API_BASE_MP || BASE;
 // #endif
 
 /** 权益耗尽的错误码，页面据此弹「开通 VIP」引导而不是普通报错 */
