@@ -474,6 +474,9 @@ model Profile {
   /// 择偶描述的 embedding
   prefEmbedding      Json?
   embeddingUpdatedAt DateTime?
+  /// 算出这两个向量的模型，形如 `text-embedding-v3:1024` 或 `mock:256`。
+  /// 换模型后旧向量与新向量不可比，靠这个字段识别出来重算，而不是拿去做余弦。
+  embeddingModel     String?   @db.VarChar(64)
 
   viewCount    Int       @default(0)
   lastActiveAt DateTime?

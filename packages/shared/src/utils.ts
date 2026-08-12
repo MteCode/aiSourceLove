@@ -84,7 +84,11 @@ export function harmonicMean(a: number, b: number): number {
 
 /** 余弦相似度，用于 embedding 语义匹配 */
 export function cosineSimilarity(a: number[], b: number[]): number {
-  const n = Math.min(a.length, b.length);
+  // 维度不同就是两个模型算出来的向量，没有可比性。
+  // 这里必须返回 0 而不是按短的那个截断——截断照样算得出一个数，
+  // 换 embedding 模型后匹配分会整体变成噪声，还不报错，查都没法查。
+  if (a.length !== b.length) return 0;
+  const n = a.length;
   if (n === 0) return 0;
   let dot = 0;
   let na = 0;

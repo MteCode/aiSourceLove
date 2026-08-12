@@ -230,13 +230,21 @@ export class MatchService {
         introEmbedding: true,
         prefEmbedding: true,
         embeddingUpdatedAt: true,
+        embeddingModel: true,
         preference: { select: { description: true } },
       },
     });
 
-    // 缺向量的补算（懒加载：谁被匹配到才算谁，不做全量预热）
+    // 缺向量的补算（懒加载：谁被匹配到才算谁，不做全量预热）。
+    // 模型对不上的也算"缺"——换了 embedding 模型之后，旧向量和新向量维度和语义空间都不同，
+    // 拿来算余弦得到的是噪声，必须重算。
+    const currentModel = this.ai.embeddingModelId;
     const needEmbed = profiles.filter(
-      (p) => !p.embeddingUpdatedAt || p.introEmbedding == null || p.prefEmbedding == null,
+      (p) =>
+        !p.embeddingUpdatedAt ||
+        p.introEmbedding == null ||
+        p.prefEmbedding == null ||
+        p.embeddingModel !== currentModel,
     );
     if (needEmbed.length) {
       const ok = await this.backfillEmbeddings(needEmbed);
@@ -324,11 +332,13 @@ export class MatchService {
             introEmbedding: (v.intro ?? []) as Prisma.InputJsonValue,
             prefEmbedding: (v.pref ?? []) as Prisma.InputJsonValue,
             embeddingUpdatedAt: now,
+            embeddingModel: this.ai.embeddingModelId,
           },
         }),
       ),
     );
-    this.logger.log(`补算了 ${byProfile.size} 份档案的向量（provider=${this.ai.providerName}）`);
+    // 这里要报向量模型，不是对话模型——两条通道可以来自不同厂商，报错了会指错方向
+    this.logger.log(`补算了 ${byProfile.size} 份档案的向量（model=${this.ai.embeddingModelId}）`);
     return true;
   }
 
@@ -347,18 +357,24 @@ export class MatchService {
     });
     const descById = new Map(descs.map((d) => [d.id, d.introduction ?? '']));
 
-    // 串行而不是并发：AI 接口通常有 QPS 限制，3 个请求串行也就 3 秒
-    for (const t of top) {
-      const reason = await this.ai.generateMatchReason({
-        cacheKey: `${selfId}:${t.candidate.id}:${t.result.score}`,
-        selfDesc: descById.get(selfId) ?? '',
-        otherDesc: descById.get(t.candidate.id) ?? '',
-        highlights: t.result.highlights,
-        concerns: t.result.concerns,
-        score: t.result.score,
-      });
-      if (reason) out.set(t.candidate.id, reason);
-    }
+    // 并发发出去。原来是串行的，前提是"每个也就 1 秒"——但换上推理型模型后
+    // 单个要 20 秒，3 个串起来 60 秒，正好撞上 Nginx 的代理读超时，整个请求被切断。
+    // 3 个并发对任何厂商的 QPS 限制都不构成压力。
+    const results = await Promise.all(
+      top.map((t) =>
+        this.ai
+          .generateMatchReason({
+            cacheKey: `${selfId}:${t.candidate.id}:${t.result.score}`,
+            selfDesc: descById.get(selfId) ?? '',
+            otherDesc: descById.get(t.candidate.id) ?? '',
+            highlights: t.result.highlights,
+            concerns: t.result.concerns,
+            score: t.result.score,
+          })
+          .then((reason) => ({ id: t.candidate.id, reason })),
+      ),
+    );
+    for (const r of results) if (r.reason) out.set(r.id, r.reason);
     return out;
   }
 

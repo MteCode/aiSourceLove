@@ -19,28 +19,65 @@ import {
 @Injectable()
 export class AiService {
   private readonly logger = new Logger(AiService.name);
+  /** 对话通道 */
   private readonly provider: AiProvider;
+  /**
+   * 向量通道。多数时候和 provider 是同一个对象。
+   *
+   * 分开拿是因为现实里这俩常常不是同一家：DeepSeek 只有对话没有 embedding，
+   * 中转服务的分组也可能只挂了对话模型。这时候对话用真模型、向量退回 mock，
+   * 比让向量去打一个不存在的接口、吃 503 再重试退避要好。
+   */
+  private readonly embedProvider: AiProvider;
 
   constructor(
     private readonly config: ConfigService<AppConfig, true>,
     private readonly redis: RedisService,
   ) {
     const ai = this.config.get('ai', { infer: true });
-    if (ai.provider === 'openai-compatible' && ai.embeddingApiKey) {
+    const mock = new MockAiProvider(256);
+
+    // ── 对话通道 ──
+    if (ai.provider === 'openai-compatible' && ai.apiKey) {
       this.provider = new OpenAiCompatProvider({
         chatBaseUrl: ai.baseUrl,
         chatApiKey: ai.apiKey,
         chatModel: ai.chatModel,
+        // 这个实例只用来 chat，下面的 embedding 字段填了也不会走到
         embeddingBaseUrl: ai.embeddingBaseUrl || ai.baseUrl,
         embeddingApiKey: ai.embeddingApiKey || ai.apiKey,
         embeddingModel: ai.embeddingModel,
         embeddingDim: ai.embeddingDim,
+        embeddingBatchSize: ai.embeddingBatchSize,
+        timeoutMs: ai.timeoutMs,
       });
-      this.logger.log(`AI Provider: openai-compatible (${ai.chatModel} / ${ai.embeddingModel})`);
+      this.logger.log(`AI 对话：${ai.chatModel} @ ${ai.baseUrl}`);
     } else {
-      this.provider = new MockAiProvider(256);
+      this.provider = mock;
+      this.logger.warn('AI 对话：mock（未配置 AI_API_KEY），推荐理由是模板拼的');
+    }
+
+    // ── 向量通道 ──
+    // 必须显式配了 embedding 的 key 才启用真模型。
+    // 不从对话 key 自动推导：对话供应商很可能根本没有 embedding 接口，
+    // 推导过去的结果是每次匹配都去打一个 404/503 的地址，白白拖慢请求。
+    if (ai.embeddingApiKey && (ai.embeddingBaseUrl || ai.baseUrl)) {
+      this.embedProvider = new OpenAiCompatProvider({
+        chatBaseUrl: ai.embeddingBaseUrl || ai.baseUrl,
+        chatApiKey: ai.embeddingApiKey,
+        chatModel: ai.chatModel,
+        embeddingBaseUrl: ai.embeddingBaseUrl || ai.baseUrl,
+        embeddingApiKey: ai.embeddingApiKey,
+        embeddingModel: ai.embeddingModel,
+        embeddingDim: ai.embeddingDim,
+        embeddingBatchSize: ai.embeddingBatchSize,
+        timeoutMs: ai.timeoutMs,
+      });
+      this.logger.log(`AI 向量：${ai.embeddingModel} @ ${ai.embeddingBaseUrl || ai.baseUrl}`);
+    } else {
+      this.embedProvider = mock;
       this.logger.warn(
-        'AI Provider: mock（未配置 AI_API_KEY）。匹配的 AI 层会退化为词面重合度，L1+L2 不受影响。',
+        'AI 向量：mock（未配置 AI_EMBEDDING_API_KEY）。语义匹配退化为词面重合度，L1+L2 不受影响。',
       );
     }
   }
@@ -53,11 +90,20 @@ export class AiService {
     return this.provider.name;
   }
 
+  /** 向量的来源标识，落库时跟着存，用于识别旧模型算的向量 */
+  get embeddingModelId(): string {
+    return this.embedProvider.embeddingModelId;
+  }
+
+  get isEmbeddingReal(): boolean {
+    return this.embedProvider.isReal;
+  }
+
   /** 批量向量化，失败返回 null（调用方降级） */
   async embed(texts: string[]): Promise<number[][] | null> {
     if (!texts.length) return [];
     try {
-      return await this.provider.embed(texts);
+      return await this.embedProvider.embed(texts);
     } catch (e) {
       this.logger.error(`向量化失败：${(e as Error).message}`);
       return null;

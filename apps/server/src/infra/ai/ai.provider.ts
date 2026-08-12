@@ -22,6 +22,12 @@ export interface AiProvider {
   chat(messages: ChatMessage[], opts?: { maxTokens?: number; temperature?: number }): Promise<string>;
   /** 该实现是否是真实模型（false 表示 mock，调用方可据此决定要不要扣权益） */
   readonly isReal: boolean;
+  /**
+   * 向量的来源标识，形如 `text-embedding-v3:1024` 或 `mock:256`。
+   * 落库时跟着向量一起存：换了模型的向量彼此不可比，
+   * 必须能识别出"这条是旧模型算的"从而重算，而不是拿去做余弦。
+   */
+  readonly embeddingModelId: string;
 }
 
 export const AI_PROVIDER = Symbol('AI_PROVIDER');
@@ -41,8 +47,11 @@ export const AI_PROVIDER = Symbol('AI_PROVIDER');
 export class MockAiProvider implements AiProvider {
   readonly name = 'mock';
   readonly isReal = false;
+  readonly embeddingModelId: string;
 
-  constructor(private readonly dim = 256) {}
+  constructor(private readonly dim = 256) {
+    this.embeddingModelId = `mock:${dim}`;
+  }
 
   async embed(texts: string[]): Promise<number[][]> {
     return texts.map((t) => this.hashEmbed(t));
@@ -106,24 +115,42 @@ export interface OpenAiCompatOptions {
   embeddingModel: string;
   embeddingDim: number;
   timeoutMs?: number;
+  /** embedding 接口单次最多几条文本。通义 25，OpenAI 2048，取小的更安全 */
+  embeddingBatchSize?: number;
+  /** 遇到 429 / 5xx 重试几次 */
+  maxRetries?: number;
 }
 
 export class OpenAiCompatProvider implements AiProvider {
   readonly name = 'openai-compatible';
   readonly isReal = true;
+  readonly embeddingModelId: string;
 
-  constructor(private readonly opts: OpenAiCompatOptions) {}
+  constructor(private readonly opts: OpenAiCompatOptions) {
+    this.embeddingModelId = `${opts.embeddingModel}:${opts.embeddingDim}`;
+  }
 
   async embed(texts: string[]): Promise<number[][]> {
     if (!texts.length) return [];
     const url = `${this.opts.embeddingBaseUrl.replace(/\/$/, '')}/embeddings`;
-    const res = await this.fetchJson<{ data: { embedding: number[]; index: number }[] }>(url, {
-      apiKey: this.opts.embeddingApiKey,
-      body: { model: this.opts.embeddingModel, input: texts, encoding_format: 'float' },
-    });
-    // 按 index 归位，别信返回顺序
-    const out = new Array<number[]>(texts.length).fill([]);
-    for (const d of res.data) out[d.index] = d.embedding;
+    const out = new Array<number[]>(texts.length);
+
+    // 必须分批：各家 embedding 接口都有单次条数上限（通义 25 条、OpenAI 2048 条），
+    // 匹配时一次要算几百上千条文本，整包发过去必被拒。
+    const size = this.opts.embeddingBatchSize ?? 25;
+    for (let start = 0; start < texts.length; start += size) {
+      const slice = texts.slice(start, start + size);
+      const res = await this.fetchJson<{ data: { embedding: number[]; index: number }[] }>(url, {
+        apiKey: this.opts.embeddingApiKey,
+        body: { model: this.opts.embeddingModel, input: slice, encoding_format: 'float' },
+      });
+      // 按 index 归位，别信返回顺序
+      for (const d of res.data) out[start + d.index] = d.embedding;
+    }
+
+    for (let i = 0; i < out.length; i++) {
+      if (!out[i]) throw new Error(`第 ${i} 条文本没拿到向量，接口返回不完整`);
+    }
     return out;
   }
 
@@ -145,29 +172,51 @@ export class OpenAiCompatProvider implements AiProvider {
     return res.choices?.[0]?.message?.content?.trim() ?? '';
   }
 
+  /**
+   * 带重试的 POST。
+   *
+   * 只重试 429 和 5xx——这类是"再试一次可能就好了"。
+   * 4xx（key 错、模型名错、参数错）重试多少次都是同样的错，立刻抛出去别浪费时间和配额。
+   */
   private async fetchJson<T>(
     url: string,
     init: { apiKey: string; body: unknown },
   ): Promise<T> {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), this.opts.timeoutMs ?? 20000);
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${init.apiKey}`,
-        },
-        body: JSON.stringify(init.body),
-        signal: ctrl.signal,
-      });
-      if (!res.ok) {
+    const maxRetries = this.opts.maxRetries ?? 2;
+    let lastErr: Error | undefined;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), this.opts.timeoutMs ?? 20000);
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${init.apiKey}`,
+          },
+          body: JSON.stringify(init.body),
+          signal: ctrl.signal,
+        });
+        if (res.ok) return (await res.json()) as T;
+
         const text = await res.text().catch(() => '');
-        throw new Error(`AI 接口 ${res.status}: ${text.slice(0, 300)}`);
+        const err = new Error(`AI 接口 ${res.status}: ${text.slice(0, 300)}`);
+        if (res.status !== 429 && res.status < 500) throw err;
+        lastErr = err;
+      } catch (e) {
+        // 超时和网络错误也值得重试；上面主动抛的 4xx 已经 return 出去了
+        lastErr = e as Error;
+        if (lastErr.message.startsWith('AI 接口 4')) throw lastErr;
+      } finally {
+        clearTimeout(timer);
       }
-      return (await res.json()) as T;
-    } finally {
-      clearTimeout(timer);
+
+      if (attempt < maxRetries) {
+        // 指数退避：1s、2s。限流场景下立刻重试只会继续撞墙
+        await new Promise((r) => setTimeout(r, 1000 * 2 ** attempt));
+      }
     }
+    throw lastErr ?? new Error('AI 接口调用失败');
   }
 }
