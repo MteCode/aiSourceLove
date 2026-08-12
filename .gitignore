@@ -57,3 +57,6 @@ apps/client/unpackage/
 /xiangqin.dump
 /xiangqin*.sql
 /import-tmp/
+
+# Claude Code 个人权限配置，不进仓库
+.claude/settings.local.json
