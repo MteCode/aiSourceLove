@@ -17,7 +17,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { basename } from 'node:path';
-import { REGIONS, REGION_ALIASES } from '../prisma/regions';
+import { REGIONS, REGION_ALIASES, REGION_WEAK_ALIASES } from '../prisma/regions';
 import { PrismaClient, Gender, Education, MaritalStatus, HouseStatus, CarStatus, ProfileStatus, ProfileSource, AuditStatus } from '@prisma/client';
 
 const prisma = new PrismaClient();
@@ -208,6 +208,11 @@ async function buildRegionMatcher() {
   // 长名优先，"井陉矿区" 不会被 "井陉" 抢走
   keyed.sort((a, b) => b.key.length - a.key.length);
 
+  // 弱别名单独一档，正常匹配全落空时才兜底
+  const weak = Object.entries(REGION_WEAK_ALIASES)
+    .map(([alias, code]) => ({ region: byCode.get(code), key: alias }))
+    .filter((w): w is { region: Region; key: string } => !!w.region);
+
   const parentOf = (r: Region | null): Region | null => (r?.parentCode ? byCode.get(r.parentCode) ?? null : null);
 
   return (text: string | undefined): GeoHit => {
@@ -216,10 +221,16 @@ async function buildRegionMatcher() {
 
     // 一条文本里出现两个地名是常事（"枣强县（预计回辛集）"、"石家庄（可回辛集）"），
     // 一律取先出现的那个——运营的书写习惯是先写现居地，后面括号里是补充说明
-    const hits = keyed
+    let hits = keyed
       .map((k) => ({ region: k.region, at: text.indexOf(k.key), len: k.key.length }))
       .filter((h) => h.at >= 0)
       .sort((a, b) => a.at - b.at || b.len - a.len);
+
+    if (!hits.length) {
+      hits = weak
+        .map((k) => ({ region: k.region, at: text.indexOf(k.key), len: k.key.length }))
+        .filter((h) => h.at >= 0);
+    }
 
     const cityHit = hits.find((h) => h.region.level === 2) ?? null;
     const city = cityHit?.region ?? null;
