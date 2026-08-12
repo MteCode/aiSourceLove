@@ -17,7 +17,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { basename } from 'node:path';
-import { REGIONS } from '../prisma/regions';
+import { REGIONS, REGION_ALIASES } from '../prisma/regions';
 import { PrismaClient, Gender, Education, MaritalStatus, HouseStatus, CarStatus, ProfileStatus, ProfileSource, AuditStatus } from '@prisma/client';
 
 const prisma = new PrismaClient();
@@ -190,12 +190,23 @@ async function buildRegionMatcher() {
   });
 
   const byCode = new Map(regions.map((r) => [r.code, r]));
-  // 去掉行政级别后缀再匹配，"辛集市" 和 "辛集" 才是同一个东西
-  const keyed = regions
-    .map((r) => ({ region: r, key: r.name.replace(/(省|市|区|县|自治州|新区|矿区)$/, '') }))
-    .filter((k) => k.key.length >= 2)
-    // 同级里长名优先，"井陉矿区" 不会被 "井陉县" 抢走
-    .sort((a, b) => b.key.length - a.key.length);
+
+  const keyed: { region: Region; key: string }[] = [];
+  for (const r of regions) {
+    // 全名和去掉行政级别后缀的简称都要能匹配：
+    // "辛集市"和"辛集"是同一个东西，而"赵县"去掉"县"只剩一个字，只能靠全名命中
+    const short = r.name.replace(/(省|市|区|县|自治州|新区|矿区)$/, '');
+    for (const key of new Set([r.name, short])) {
+      if (key.length >= 2) keyed.push({ region: r, key });
+    }
+  }
+  // 本地企业、村镇、旧地名——在本地人嘴里就是地址
+  for (const [alias, code] of Object.entries(REGION_ALIASES)) {
+    const region = byCode.get(code);
+    if (region) keyed.push({ region, key: alias });
+  }
+  // 长名优先，"井陉矿区" 不会被 "井陉" 抢走
+  keyed.sort((a, b) => b.key.length - a.key.length);
 
   const parentOf = (r: Region | null): Region | null => (r?.parentCode ? byCode.get(r.parentCode) ?? null : null);
 
@@ -206,9 +217,9 @@ async function buildRegionMatcher() {
     // 一条文本里出现两个地名是常事（"枣强县（预计回辛集）"、"石家庄（可回辛集）"），
     // 一律取先出现的那个——运营的书写习惯是先写现居地，后面括号里是补充说明
     const hits = keyed
-      .map((k) => ({ region: k.region, at: text.indexOf(k.key) }))
+      .map((k) => ({ region: k.region, at: text.indexOf(k.key), len: k.key.length }))
       .filter((h) => h.at >= 0)
-      .sort((a, b) => a.at - b.at);
+      .sort((a, b) => a.at - b.at || b.len - a.len);
 
     const cityHit = hits.find((h) => h.region.level === 2) ?? null;
     const city = cityHit?.region ?? null;
@@ -225,7 +236,7 @@ async function buildRegionMatcher() {
         if (r.parentCode !== anchor.code) return false;
         // 市名和区县名之间只允许隔一两个字（"石家庄市长安区"的"市"、"天津（东丽区）"的括号）。
         // 隔得远说明是补充说明而不是地址，比如"石家庄（可回辛集）"里的辛集不是现居地。
-        const gap = at - (cityHit!.at + cityHit!.region.name.replace(/(省|市|区|县|自治州|新区|矿区)$/, '').length);
+        const gap = at - (cityHit!.at + cityHit!.len);
         return gap >= -2 && gap <= 2;
       })?.region ?? null;
 
