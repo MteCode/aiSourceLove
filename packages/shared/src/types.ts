@@ -243,8 +243,6 @@ export interface ProfileBriefDto {
   displayName: string;
   gender: Gender;
   age: number;
-  /** 出生年。用来算生肖——照片不展示时它承担头像的角色 */
-  birthYear: number;
   heightCm: number | null;
   education: Education | null;
   cityName: string | null;
