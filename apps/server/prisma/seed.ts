@@ -97,7 +97,7 @@ const FIELDS: FieldSeed[] = [
   { code: 'realName', label: '真实姓名', type: 'TEXT', group: 'basic', visibility: 3, isCore: true, required: true, sort: 1, maxLength: 20, helpText: '仅红娘和已解锁的人可见，列表页显示为「张*」' },
   { code: 'nickname', label: '昵称', type: 'TEXT', group: 'basic', visibility: 0, isCore: true, sort: 2, maxLength: 20 },
   { code: 'gender', label: '性别', type: 'SELECT', group: 'basic', visibility: 0, isCore: true, required: true, sort: 3, options: [{ value: 'MALE', label: '男' }, { value: 'FEMALE', label: '女' }] },
-  { code: 'birthday', label: '出生日期', type: 'DATE', group: 'basic', visibility: 2, isCore: true, required: true, sort: 4, helpText: '列表只展示年龄，具体生日 VIP 可见' },
+  { code: 'birthday', label: '出生日期', type: 'DATE', group: 'basic', visibility: 1, isCore: true, required: true, sort: 4, helpText: '列表展示年龄' },
   { code: 'heightCm', label: '身高(cm)', type: 'NUMBER', group: 'basic', visibility: 0, isCore: true, sort: 5, minValue: 140, maxValue: 220, weightKey: 'height', isPreference: true },
   { code: 'weightKg', label: '体重(kg)', type: 'NUMBER', group: 'basic', visibility: 1, isCore: true, sort: 6, minValue: 30, maxValue: 200 },
   { code: 'cityCode', label: '常住城市', type: 'REGION', group: 'basic', visibility: 0, isCore: true, required: true, sort: 7, weightKey: 'distance', isPreference: true },
@@ -114,10 +114,10 @@ const FIELDS: FieldSeed[] = [
     { value: 'MASTER', label: '硕士', score: 6 },
     { value: 'DOCTOR', label: '博士', score: 7 },
   ] },
-  { code: 'school', label: '毕业院校', type: 'TEXT', group: 'career', visibility: 2, isCore: true, sort: 2, maxLength: 50 },
+  { code: 'school', label: '毕业院校', type: 'TEXT', group: 'career', visibility: 1, isCore: true, sort: 2, maxLength: 50 },
   { code: 'occupation', label: '职业', type: 'TEXT', group: 'career', visibility: 1, isCore: true, sort: 3, maxLength: 50 },
-  { code: 'company', label: '工作单位', type: 'TEXT', group: 'career', visibility: 2, isCore: true, sort: 4, maxLength: 50, helpText: '涉及隐私，默认 VIP 才可见' },
-  { code: 'annualIncome', label: '年收入(元)', type: 'NUMBER', group: 'career', visibility: 2, isCore: true, sort: 5, minValue: 0, weightKey: 'income', isPreference: true },
+  { code: 'company', label: '工作单位', type: 'TEXT', group: 'career', visibility: 1, isCore: true, sort: 4, maxLength: 50 },
+  { code: 'annualIncome', label: '年收入(元)', type: 'NUMBER', group: 'career', visibility: 1, isCore: true, sort: 5, minValue: 0, weightKey: 'income', isPreference: true },
 
   // ── 家庭情况 ──
   { code: 'maritalStatus', label: '婚姻状况', type: 'SELECT', group: 'family', visibility: 1, isCore: true, required: true, sort: 1, isPreference: true, options: [
@@ -126,10 +126,10 @@ const FIELDS: FieldSeed[] = [
   { code: 'childrenStatus', label: '子女情况', type: 'SELECT', group: 'family', visibility: 1, isCore: true, sort: 2, isPreference: true, options: [
     { value: 'NONE', label: '无子女' }, { value: 'WITH_SELF', label: '有，随自己' }, { value: 'WITH_OTHER', label: '有，不随自己' },
   ] },
-  { code: 'houseStatus', label: '房产', type: 'SELECT', group: 'family', visibility: 2, isCore: true, sort: 3, isPreference: true, options: [
+  { code: 'houseStatus', label: '房产', type: 'SELECT', group: 'family', visibility: 1, isCore: true, sort: 3, isPreference: true, options: [
     { value: 'NONE', label: '暂无' }, { value: 'MORTGAGE', label: '按揭' }, { value: 'FULL_PAID', label: '全款' },
   ] },
-  { code: 'carStatus', label: '车产', type: 'SELECT', group: 'family', visibility: 2, isCore: true, sort: 4, isPreference: true, options: [
+  { code: 'carStatus', label: '车产', type: 'SELECT', group: 'family', visibility: 1, isCore: true, sort: 4, isPreference: true, options: [
     { value: 'NONE', label: '暂无' }, { value: 'MORTGAGE', label: '按揭' }, { value: 'FULL_PAID', label: '全款' },
   ] },
 

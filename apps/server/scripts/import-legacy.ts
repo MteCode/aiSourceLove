@@ -298,6 +298,8 @@ async function main(): Promise<void> {
       realName: r.user_name ?? null,
       gender,
       birthday,
+      // 老库只有出生年，月日是补的，必须标出来免得被当成真生日
+      birthdayPrecision: 'YEAR',
       heightCm: num(r.height),
       weightKg: num(r.weight),
       education: toEducation(r.education),

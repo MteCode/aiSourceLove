@@ -460,6 +460,10 @@ model Profile {
   nickname       String?        @db.VarChar(50)
   gender         Gender
   birthday       DateTime       @db.Date
+  /// 生日精度：DAY = 年月日都可信；YEAR = 只有出生年（老库导入的就是这种，
+  /// 月日是补的 1 月 1 日）。展示层据此决定显示"1991 年"还是"1991-01-01"，
+  /// 不加这个标记就会把补出来的日期当成真生日展示出去。
+  birthdayPrecision String      @default("DAY") @db.VarChar(8)
   heightCm       Int?
   weightKg       Int?
   education      Education?

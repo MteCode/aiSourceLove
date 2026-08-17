@@ -5,6 +5,7 @@ import {
   CAR_LABEL,
   CHILDREN_LABEL,
   EDUCATION_LABEL,
+  GENDER_LABEL,
   HOUSE_LABEL,
   MARITAL_LABEL,
   VisibilityLevel,
@@ -31,6 +32,18 @@ const unlocking = ref(false);
 const failed = ref('');
 
 const photos = computed(() => profile.value?.photos ?? []);
+
+/**
+ * 老库导入的档案只有出生年，月日是补的 1 月 1 日。
+ * 直接显示 1991-01-01 会被当成真生日，所以按精度分开展示。
+ */
+const birthdayText = computed(() => {
+  const p = profile.value;
+  if (!p) return '未填写';
+  const raw = plain(p.birthday, '');
+  if (!raw) return '未填写';
+  return p.birthdayPrecision === 'YEAR' ? `${String(raw).slice(0, 4)} 年` : String(raw).slice(0, 10);
+});
 const contactLocked = computed(
   () => isMaskedValue(profile.value?.phone) || isMaskedValue(profile.value?.wechat),
 );
@@ -159,6 +172,11 @@ function copy(text: string): void {
       <!-- 基本信息 -->
       <yq-card title="基本信息">
         <view class="row"><text class="k">真实姓名</text><text class="v">{{ plain(profile.realName, '未公开') }}</text></view>
+        <view class="row"><text class="k">性别</text><text class="v">{{ GENDER_LABEL[profile.gender] }}</text></view>
+        <view class="row"><text class="k">年龄</text><text class="v">{{ profile.age }} 岁</text></view>
+        <view class="row"><text class="k">身高</text><text class="v">{{ profile.heightCm ? profile.heightCm + ' cm' : '未填写' }}</text></view>
+        <view class="row"><text class="k">体重</text><text class="v">{{ profile.weightKg ? profile.weightKg + ' kg' : '未填写' }}</text></view>
+        <view class="row"><text class="k">生日</text><text class="v">{{ birthdayText }}</text></view>
         <view class="row"><text class="k">婚史</text><text class="v">{{ MARITAL_LABEL[profile.maritalStatus] }}</text></view>
         <view class="row"><text class="k">子女</text><text class="v">{{ CHILDREN_LABEL[profile.childrenStatus] }}</text></view>
         <view class="row"><text class="k">房产</text><text class="v">{{ profile.houseStatus ? HOUSE_LABEL[profile.houseStatus] : '未填写' }}</text></view>

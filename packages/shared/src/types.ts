@@ -219,6 +219,8 @@ export interface ProfileDto {
   photos: PhotoDto[];
   /** true = 有照片但你看不到，需联系红娘。区别于「这个人本来就没传照片」 */
   photosLocked: boolean;
+  /** 'YEAR' 时只有出生年可信，展示层不要显示完整日期 */
+  birthdayPrecision: 'DAY' | 'YEAR';
   preference: PreferenceDto | null;
   /** 扩展字段（EAV），key 是 fieldDef.code */
   extras: Record<string, unknown>;
