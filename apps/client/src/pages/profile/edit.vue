@@ -41,14 +41,19 @@ const canSubmit = computed(
     profile.value.status !== ProfileStatus.APPROVED,
 );
 
-async function load(): Promise<void> {
+const loaded = ref(false);
+
+async function load(forceRefill = false): Promise<void> {
   if (!(await user.requireLogin())) return;
   loading();
   try {
     const [schema, mine] = await Promise.all([fieldApi.schema(), profileApi.me()]);
     groups.value = schema.groups;
     profile.value = mine;
-    fillForm(mine);
+    if (forceRefill || !loaded.value) {
+      fillForm(mine);
+      loaded.value = true;
+    }
     if (mine && mine.status === ProfileStatus.REJECTED) await loadRejectReason();
   } finally {
     hideLoading();
@@ -130,6 +135,7 @@ async function save(silent = false): Promise<boolean> {
   saving.value = true;
   try {
     profile.value = await profileApi.upsertMe(buildPayload());
+    loaded.value = false;
     await user.refreshQuietly();
     if (!silent) toast('已保存', 'success');
     return true;
