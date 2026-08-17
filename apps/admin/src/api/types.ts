@@ -92,3 +92,16 @@ export interface PendingCount {
   profilePending: number;
   photoPending: number;
 }
+
+/** 管理员邀请码。后端 sys_admin_invite 表 */
+export interface AdminInviteDto {
+  id: string;
+  code: string;
+  remark: string | null;
+  expiresAt: string | null;
+  /** 0 = 不限次数 */
+  maxUses: number;
+  usedCount: number;
+  enabled: boolean;
+  createdAt: string;
+}

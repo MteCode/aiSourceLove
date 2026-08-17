@@ -182,6 +182,12 @@ export const routes: RouteRecordRaw[] = [
         meta: { title: '角色权限', icon: 'Key', perm: 'system:role:list' },
       },
       {
+        path: 'invites',
+        name: 'SysInvites',
+        component: () => import('@/views/system/invites.vue'),
+        meta: { title: '推广邀请码', icon: 'Share', perm: 'system:user:list' },
+      },
+      {
         path: 'logs',
         name: 'SysLogs',
         component: () => import('@/views/system/logs.vue'),
