@@ -25,6 +25,14 @@ export interface ProfileQuery {
 }
 
 export const profileApi = {
+  /**
+   * 后台改档案。主要用于补录真实姓名、联系方式——
+   * 这些字段已从会员端表单撤掉，由红娘线下核实后在后台录。
+   */
+  update(id: string, body: Record<string, unknown>) {
+    return request.put<ProfileDto>(`/admin/profiles/${id}`, body);
+  },
+
   list(query: ProfileQuery) {
     return request.get<PageResult<ProfileBriefDto>>('/admin/profiles', query);
   },

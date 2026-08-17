@@ -28,6 +28,7 @@ import {
   PreferenceInputDto,
   QueryProfileDto,
   UpsertProfileDto,
+  AdminUpdateProfileDto,
 } from './dto/profile.dto';
 
 /**
@@ -81,6 +82,39 @@ export class ProfileService {
 
     await this.update(existing, dto, { operatorId: userId, operatorName: '本人' });
     return this.toDto(existing.id, null);
+  }
+
+  /**
+   * 后台改档案（管理员 / 该档案的归属红娘）。
+   *
+   * 存在的意义主要是姓名和联系方式这类**只有红娘该知道、会员自己不填**的信息：
+   * 姓名字段已从会员端表单撤掉，红娘线下核实后在后台补录。
+   *
+   * 复用 update() 而不是另写一套：审核状态流转、EAV 落库、
+   * 改关键字段要重新送审这些规则都在里面，绕开就会走偏。
+   */
+  async updateByAdmin(
+    profileId: string,
+    dto: AdminUpdateProfileDto,
+    viewer: AuthUser,
+  ): Promise<ProfileDto> {
+    const existing = await this.prisma.profile.findFirst({
+      where: { id: profileId, deletedAt: null },
+      include: PROFILE_INCLUDE,
+    });
+    if (!existing) throw new NotFoundException('档案不存在');
+
+    await this.update(
+      existing,
+      dto,
+      { operatorId: viewer.userId, operatorName: viewer.nickname ?? '后台' },
+      // 后台改动不重新送审：改的人本来就是审核方。
+      // 不加这条，红娘纠正一个错别字就会把已通过的档案打回待审队列。
+      { skipReaudit: true },
+    );
+    // viewer 必须传管理员本人：传 null 走匿名投影，
+    // 一旦档案不是已通过状态就会被判成"不可见"，改成功了却报 404
+    return this.toDto(existing.id, viewer);
   }
 
   // ═══════ 录入路径 2：红娘代录 ═══════
@@ -184,15 +218,19 @@ export class ProfileService {
 
   private async update(
     existing: Profile,
-    dto: UpsertProfileDto,
+    // 用部分类型：这三个方法本来就是「undefined 就不写」的语义，
+    // 收窄成整份 DTO 只会挡住后台的单字段修改
+    dto: AdminUpdateProfileDto,
     operator: { operatorId: string; operatorName: string },
+    opts?: { skipReaudit?: boolean },
   ): Promise<void> {
     const { normalized, errors } = await this.field.validateAndNormalize(dto.extras ?? {});
     if (errors.length) throw new BizException(errors.join('；'), 40030);
 
     // 改了关键字段就要重新送审——已通过的资料被偷偷改成另一个人是这类系统的经典事故
     const changedKeyField = this.detectKeyFieldChange(existing, dto);
-    const needReaudit = existing.status === ProfileStatus.APPROVED && changedKeyField;
+    const needReaudit =
+      !opts?.skipReaudit && existing.status === ProfileStatus.APPROVED && changedKeyField;
 
     await this.prisma.$transaction(async (tx) => {
       await tx.profile.update({
@@ -235,7 +273,7 @@ export class ProfileService {
     });
   }
 
-  private detectKeyFieldChange(existing: Profile, dto: UpsertProfileDto): string | null {
+  private detectKeyFieldChange(existing: Profile, dto: AdminUpdateProfileDto): string | null {
     for (const key of REAUDIT_FIELDS) {
       const next = (dto as unknown as Record<string, unknown>)[key];
       if (next === undefined) continue;
@@ -251,10 +289,10 @@ export class ProfileService {
     return null;
   }
 
-  private coreFields(dto: UpsertProfileDto) {
+  private coreFields(dto: AdminUpdateProfileDto) {
     // undefined 的字段不写（保持原值），null 才是"清空"
     const out: Prisma.ProfileUncheckedUpdateInput = {};
-    const assign = <K extends keyof UpsertProfileDto>(k: K) => {
+    const assign = <K extends keyof AdminUpdateProfileDto>(k: K) => {
       if (dto[k] !== undefined) (out as Record<string, unknown>)[k as string] = dto[k];
     };
     (
@@ -263,7 +301,7 @@ export class ProfileService {
         'occupation', 'company', 'annualIncome', 'maritalStatus', 'childrenStatus',
         'houseStatus', 'carStatus', 'provinceCode', 'cityCode', 'districtCode',
         'hometownCityCode', 'introduction', 'phone', 'wechat',
-      ] as (keyof UpsertProfileDto)[]
+      ] as (keyof AdminUpdateProfileDto)[]
     ).forEach(assign);
 
     if (dto.birthday !== undefined) out.birthday = new Date(dto.birthday);

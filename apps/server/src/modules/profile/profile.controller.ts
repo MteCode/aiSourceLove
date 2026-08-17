@@ -34,6 +34,7 @@ import {
   MatchmakerCreateProfileDto,
   QueryProfileDto,
   UpsertProfileDto,
+  AdminUpdateProfileDto,
 } from './dto/profile.dto';
 
 @ApiTags('会员档案')
@@ -193,6 +194,21 @@ export class AdminProfileController {
   @ApiOperation({ summary: '档案详情（后台，不扣查看配额）' })
   detail(@Param('id') id: string, @CurrentUser() user: AuthUser) {
     return this.profile.toDto(id, user);
+  }
+
+  @Put(':id')
+  @RequirePermissions('profile:edit')
+  @LogAction('会员档案', '后台修改档案')
+  @ApiOperation({
+    summary: '后台修改档案',
+    description: '主要用于补录真实姓名、联系方式这类会员端不填、只有红娘掌握的信息。',
+  })
+  updateByAdmin(
+    @Param('id') id: string,
+    @Body() dto: AdminUpdateProfileDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.profile.updateByAdmin(id, dto, user);
   }
 
   @Get(':id/audit-logs')

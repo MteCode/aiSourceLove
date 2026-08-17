@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import {
   IsArray,
@@ -167,6 +167,16 @@ export class UpsertProfileDto {
 }
 
 /** 红娘代录：多一个"给谁录"的信息，且不需要对方有账号 */
+/**
+ * 后台部分修改档案。
+ *
+ * 不能直接用 UpsertProfileDto：那是「整份提交」的形状，性别城市学历都是必填，
+ * 后台只想改一个姓名会被校验挡下。
+ * service 里的 coreFields() 本来就是 undefined 不写、null 才清空，
+ * 所以全可选正好配得上。
+ */
+export class AdminUpdateProfileDto extends PartialType(UpsertProfileDto) {}
+
 export class MatchmakerCreateProfileDto extends UpsertProfileDto {
   @ApiPropertyOptional({ description: '若该会员已注册，传其 userId 直接关联' })
   @IsOptional() @IsString()

@@ -20,7 +20,26 @@
       </div>
 
       <el-descriptions title="基本信息" :column="3" border size="small" class="block">
-        <el-descriptions-item label="真实姓名"><MaskedText :value="profile.realName" /></el-descriptions-item>
+        <el-descriptions-item label="真实姓名">
+          <template v-if="editingName">
+            <el-input
+              v-model="nameDraft"
+              size="small"
+              style="width: 140px"
+              maxlength="20"
+              @keyup.enter="saveName"
+            />
+            <el-button link type="primary" :loading="savingName" @click="saveName">保存</el-button>
+            <el-button link @click="editingName = false">取消</el-button>
+          </template>
+          <template v-else>
+            <MaskedText :value="profile.realName" />
+            <!-- 姓名不由会员填，只能后台补录，所以这个入口不能藏太深 -->
+            <el-button v-perm="'profile:edit'" link type="primary" @click="startEditName">
+              {{ profile.realName ? '修改' : '补录' }}
+            </el-button>
+          </template>
+        </el-descriptions-item>
         <el-descriptions-item label="年龄">{{ profile.age }} 岁</el-descriptions-item>
         <el-descriptions-item label="生日"><MaskedText :value="profile.birthday" /></el-descriptions-item>
         <el-descriptions-item label="身高">{{ profile.heightCm ? `${profile.heightCm} cm` : '-' }}</el-descriptions-item>
@@ -161,6 +180,29 @@ const extraEntries = computed(() => Object.entries(profile.value?.extras ?? {}))
 function range(min: number | null, max: number | null, unit: string): string {
   if (min == null && max == null) return '不限';
   return `${min ?? '不限'} - ${max ?? '不限'} ${unit}`;
+}
+
+const editingName = ref(false);
+const savingName = ref(false);
+const nameDraft = ref('');
+
+function startEditName(): void {
+  // 被脱敏的值是个对象，不能直接塞进输入框
+  const v = profile.value?.realName;
+  nameDraft.value = typeof v === 'string' ? v : '';
+  editingName.value = true;
+}
+
+async function saveName(): Promise<void> {
+  savingName.value = true;
+  try {
+    await profileApi.update(props.profileId, { realName: nameDraft.value.trim() || null });
+    ElMessage.success('已保存');
+    editingName.value = false;
+    await load();
+  } finally {
+    savingName.value = false;
+  }
 }
 
 async function load(): Promise<void> {
