@@ -35,6 +35,7 @@ import {
   QueryProfileDto,
   UpsertProfileDto,
   AdminUpdateProfileDto,
+  PreferenceInputDto,
 } from './dto/profile.dto';
 
 @ApiTags('会员档案')
@@ -60,6 +61,16 @@ export class ProfileController {
   @ApiOperation({ summary: '创建或更新我的档案（改关键字段会自动重新送审）' })
   upsertMe(@CurrentUser() user: AuthUser, @Body() dto: UpsertProfileDto) {
     return this.profile.upsertSelf(user.userId, dto, user);
+  }
+
+  @Put('me/preference')
+  @LogAction('会员档案', '修改择偶要求')
+  @ApiOperation({
+    summary: '只更新择偶要求',
+    description: '与档案本体分开：走 upsertMe 会因为性别/生日/城市必填而被拦下。',
+  })
+  upsertPreference(@CurrentUser() user: AuthUser, @Body() dto: PreferenceInputDto) {
+    return this.profile.upsertPreference(user.userId, dto, user);
   }
 
   @Post('me/submit')

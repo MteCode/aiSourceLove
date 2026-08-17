@@ -117,8 +117,9 @@ async function save(): Promise<void> {
 
   saving.value = true;
   try {
-    await profileApi.upsertMe({
-      preference: {
+    // 走专用接口而不是 upsertMe：后者是「整份档案提交」，
+    // 性别/生日/城市都必填，只改择偶要求会被拦下说"请选择性别"
+    await profileApi.upsertPreference({
         ageMin: form.ageMin,
         ageMax: form.ageMax,
         heightMin: form.heightMin,
@@ -130,7 +131,6 @@ async function save(): Promise<void> {
         requireHouse: form.requireHouse,
         requireCar: form.requireCar,
         description: form.description || undefined,
-      },
     });
     toast('已保存', 'success');
     setTimeout(() => uni.navigateBack(), 600);

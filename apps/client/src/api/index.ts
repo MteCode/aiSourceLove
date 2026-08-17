@@ -60,6 +60,11 @@ export const profileApi = {
   upsertMe(body: Record<string, unknown>) {
     return request.put<ProfileDto>('/profiles/me', body);
   },
+
+  /** 只保存择偶要求。走 upsertMe 会因为性别/生日/城市必填而被拦 */
+  upsertPreference(body: Record<string, unknown>) {
+    return request.put<ProfileDto>('/profiles/me/preference', body);
+  },
   submit() {
     return request.post<ProfileDto>('/profiles/me/submit');
   },

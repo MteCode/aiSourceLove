@@ -129,6 +129,46 @@ export class ProfileService {
     return this.toDto(existing.id, viewer);
   }
 
+  /**
+   * 只更新择偶要求。
+   *
+   * 不能复用 upsertSelf：那走的是「整份档案提交」的 DTO，性别、生日、常住城市
+   * 都是必填。用户只想改一下年龄区间，却被拦下来说"请选择性别"——
+   * 而性别明明早就填过了，前端也没在这个页面收集它。
+   *
+   * 择偶要求和档案本体是两张表、两个页面、两次保存，接口就该分开。
+   */
+  async upsertPreference(
+    userId: string,
+    dto: PreferenceInputDto,
+    viewer: AuthUser,
+  ): Promise<ProfileDto> {
+    const profile = await this.prisma.profile.findFirst({
+      where: { userId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!profile) throw new BizException('请先完善你的基本资料', 40031);
+
+    const data = this.preferenceData(dto);
+    await this.prisma.$transaction(async (tx) => {
+      await tx.preference.upsert({
+        where: { profileId: profile.id },
+        create: { profileId: profile.id, ...data },
+        update: data,
+      });
+      // 择偶描述变了，旧的择偶向量就失效了
+      await tx.profile.update({
+        where: { id: profile.id },
+        data: { prefEmbedding: Prisma.DbNull, embeddingUpdatedAt: null },
+      });
+    });
+
+    // 传真实的 viewer，不要用 `as AuthUser` 造一个只有两个字段的假对象——
+    // resolveViewer 会读 roles.includes，缺字段就是运行时 500。
+    // 类型断言在这里帮了倒忙：它让编译器闭嘴，却没让对象变完整。
+    return this.toDto(profile.id, viewer);
+  }
+
   // ═══════ 录入路径 2：红娘代录 ═══════
 
   /**
