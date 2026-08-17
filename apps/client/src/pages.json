@@ -47,10 +47,22 @@
     "backgroundColor": "#ffffff",
     "borderStyle": "white",
     "list": [
-      { "pagePath": "pages/square/index", "text": "广场" },
-      { "pagePath": "pages/match/index", "text": "推荐" },
-      { "pagePath": "pages/intro/list", "text": "牵线" },
-      { "pagePath": "pages/mine/index", "text": "我的" }
+      { "pagePath": "pages/square/index", "text": "广场",
+          "iconPath": "static/tabbar/square.png",
+          "selectedIconPath": "static/tabbar/square-on.png"
+        },
+      { "pagePath": "pages/match/index", "text": "推荐",
+          "iconPath": "static/tabbar/match.png",
+          "selectedIconPath": "static/tabbar/match-on.png"
+        },
+      { "pagePath": "pages/intro/list", "text": "牵线",
+          "iconPath": "static/tabbar/intro.png",
+          "selectedIconPath": "static/tabbar/intro-on.png"
+        },
+      { "pagePath": "pages/mine/index", "text": "我的",
+          "iconPath": "static/tabbar/mine.png",
+          "selectedIconPath": "static/tabbar/mine-on.png"
+        }
     ]
   }
 }
