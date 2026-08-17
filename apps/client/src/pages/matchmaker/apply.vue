@@ -13,7 +13,7 @@ const submitting = ref(false);
 const form = reactive({ name: '', phone: '', cityName: '', bio: '' });
 
 async function load(): Promise<void> {
-  if (!user.requireLogin()) return;
+  if (!(await user.requireLogin())) return;
   existing.value = await matchmakerApi.me();
   if (existing.value) {
     form.name = existing.value.name;

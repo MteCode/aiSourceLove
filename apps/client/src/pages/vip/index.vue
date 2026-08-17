@@ -29,7 +29,7 @@ async function load(): Promise<void> {
 
 async function pay(): Promise<void> {
   if (!selected.value || paying.value) return;
-  if (!user.requireLogin()) return;
+  if (!(await user.requireLogin())) return;
 
   paying.value = true;
   try {

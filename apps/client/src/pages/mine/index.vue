@@ -51,13 +51,13 @@ async function loadMatchmaker(): Promise<void> {
   }
 }
 
-function go(url: string): void {
-  if (!user.requireLogin()) return;
+async function go(url: string): Promise<void> {
+  if (!(await user.requireLogin())) return;
   navigateTo(url);
 }
 
-function goMatchmaker(): void {
-  if (!user.requireLogin()) return;
+async function goMatchmaker(): Promise<void> {
+  if (!(await user.requireLogin())) return;
   // 已通过入驻的进工作台，否则走申请流程
   if (matchmakerStatus.value === 'ACTIVE') navigateTo('/pages/matchmaker/workbench');
   else navigateTo('/pages/matchmaker/apply');

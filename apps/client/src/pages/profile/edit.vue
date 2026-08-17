@@ -42,7 +42,7 @@ const canSubmit = computed(
 );
 
 async function load(): Promise<void> {
-  if (!user.requireLogin()) return;
+  if (!(await user.requireLogin())) return;
   loading();
   try {
     const [schema, mine] = await Promise.all([fieldApi.schema(), profileApi.me()]);

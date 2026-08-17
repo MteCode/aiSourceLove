@@ -47,19 +47,32 @@ export const useUserStore = defineStore('user', () => {
     return me;
   }
 
-  /** 冷启动恢复：失败就当没登录，不打扰用户 */
-  async function restore(): Promise<void> {
-    if (!tokenStore.access) {
-      ready.value = true;
-      return;
-    }
-    try {
-      await loadMe();
-    } catch {
-      reset();
-    } finally {
-      ready.value = true;
-    }
+  /**
+   * 冷启动恢复：失败就当没登录，不打扰用户。
+   *
+   * 用 inflight 去重：App.onLaunch 会调一次，页面守卫发现还没 ready 时也会调，
+   * 不去重就会同时打好几个 /auth/me。
+   */
+  let inflight: Promise<void> | null = null;
+
+  function restore(): Promise<void> {
+    if (inflight) return inflight;
+    inflight = (async () => {
+      if (!tokenStore.access) {
+        ready.value = true;
+        return;
+      }
+      try {
+        await loadMe();
+      } catch {
+        reset();
+      } finally {
+        ready.value = true;
+      }
+    })().finally(() => {
+      inflight = null;
+    });
+    return inflight;
   }
 
   /** 每次回到前台静默刷新，VIP 到期、审核结果这些要及时反映 */
@@ -86,15 +99,30 @@ export const useUserStore = defineStore('user', () => {
   }
 
   /** 页面级守卫：没登录就跳登录页并返回 false */
-  function requireLogin(): boolean {
+  /**
+   * 页面守卫。
+   *
+   * 必须是异步的：冷启动时 App.onLaunch 里的 restore() 还在飞，
+   * user 尚未加载完，而页面 onShow 已经跑到这儿了。
+   * 只看 logged 会把「token 有效但还没恢复完」误判成未登录，
+   * 把人一路弹回登录页——用户看到的现象是"明明注册成功了却进不去"。
+   */
+  async function requireLogin(): Promise<boolean> {
     if (logged.value) return true;
+
+    // 有票据就先等恢复跑完再下结论
+    if (tokenStore.access && !ready.value) {
+      await restore();
+      if (logged.value) return true;
+    }
+
     redirectTo('/pages/login/index');
     return false;
   }
 
   /** 需要先有已通过的档案才能用的功能（匹配、被牵线） */
-  function requireProfile(): boolean {
-    if (!requireLogin()) return false;
+  async function requireProfile(): Promise<boolean> {
+    if (!(await requireLogin())) return false;
     if (!profileId.value) {
       toast('请先完善你的资料');
       uni.navigateTo({ url: '/pages/profile/edit' });

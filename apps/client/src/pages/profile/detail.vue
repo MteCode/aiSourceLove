@@ -46,7 +46,7 @@ onLoad(async (options) => {
     failed.value = '缺少档案参数';
     return;
   }
-  if (!user.requireLogin()) return;
+  if (!(await user.requireLogin())) return;
   await load();
 });
 
