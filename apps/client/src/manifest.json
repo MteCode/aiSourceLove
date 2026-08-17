@@ -6,7 +6,9 @@
   "versionCode": "100",
   "vueVersion": "3",
   "mp-weixin": {
-    "appid": "",
+    // 小程序 appid。必须写在这里，不要在开发者工具里改——
+    // 每次 npm run build:mp 会重写 project.config.json，工具里改的会被冲掉。
+    "appid": "wx3d47e98406c11b1b",
     "setting": {
       "urlCheck": false,
       "minified": true
