@@ -99,7 +99,7 @@ function goto(url: string): void {
       v-if="field.type === 'TEXT'"
       class="control"
       :value="(modelValue as string) ?? ''"
-      :placeholder="field.placeholder || '请输入'"
+      :placeholder="field.placeholder || '请输入'" placeholder-class="ph"
       :maxlength="field.maxLength ?? 140"
       @input="onInput"
     />
@@ -109,7 +109,7 @@ function goto(url: string): void {
       v-else-if="field.type === 'TEXTAREA'"
       class="control control--area"
       :value="(modelValue as string) ?? ''"
-      :placeholder="field.placeholder || '请输入'"
+      :placeholder="field.placeholder || '请输入'" placeholder-class="ph"
       :maxlength="field.maxLength ?? 500"
       @input="onInput"
     />
@@ -120,7 +120,7 @@ function goto(url: string): void {
       class="control"
       type="number"
       :value="modelValue == null ? '' : String(modelValue)"
-      :placeholder="field.placeholder || '请输入'"
+      :placeholder="field.placeholder || '请输入'" placeholder-class="ph"
       @input="onNumberInput"
     />
 
@@ -194,7 +194,7 @@ function goto(url: string): void {
     </view>
 
     <!-- 兜底：出现没适配的类型时不至于整页白掉 -->
-    <input v-else class="control" :value="(modelValue as string) ?? ''" :placeholder="field.placeholder || ''" @input="onInput" />
+    <input v-else class="control" :value="(modelValue as string) ?? ''" :placeholder="field.placeholder || ''" placeholder-class="ph" @input="onInput" />
 
     <text v-if="field.helpText" class="help yq-muted">{{ field.helpText }}</text>
   </view>
@@ -226,17 +226,31 @@ function goto(url: string): void {
   color: $yq-danger;
 }
 
+/**
+ * 所有控件共用一套尺寸。
+ *
+ * 必须显式给 height 和 line-height：<input> 用的是自己的固有高度（偏矮），
+ * 而 picker 是 flex 行、高度由文字撑开，两者放一起会明显不齐——
+ * 表单里一行高一行矮，看着像没做完。
+ */
 .control {
   width: 100%;
-  padding: 16rpx 20rpx;
-  background: $yq-bg;
+  height: 88rpx;
+  padding: 0 24rpx;
+  line-height: 88rpx;
+  background: $yq-surface-2;
+  border: 1rpx solid $yq-border;
   border-radius: 12rpx;
   font-size: 28rpx;
+  color: $yq-text;
   box-sizing: border-box;
 }
 
+/* 多行输入：自我介绍这类要给足空间，用户才愿意写 */
 .control--area {
-  height: 160rpx;
+  height: 220rpx;
+  padding: 20rpx 24rpx;
+  line-height: 1.6;
 }
 
 .control--picker {
@@ -254,8 +268,10 @@ function goto(url: string): void {
   flex: 1;
 }
 
-.placeholder {
+.placeholder,
+.ph {
   color: $yq-text-muted;
+  font-size: 28rpx;
 }
 
 .arrow {

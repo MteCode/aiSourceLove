@@ -333,6 +333,27 @@ async function seedRegions() {
   console.log(`  ${REGIONS.length} 条（省份 + 主要城市 + 河北/京津区县）`);
 }
 
+/** 清掉字段表单缓存。key 与 field.service.ts 的 SCHEMA_CACHE_KEY 保持一致 */
+async function clearSchemaCache() {
+  try {
+    const { default: Redis } = await import('ioredis');
+    const c = new Redis({
+      host: process.env.REDIS_HOST ?? '127.0.0.1',
+      port: Number(process.env.REDIS_PORT ?? 6379),
+      password: process.env.REDIS_PASSWORD || undefined,
+      db: Number(process.env.REDIS_DB ?? 0),
+      lazyConnect: true,
+      maxRetriesPerRequest: 1,
+    });
+    await c.connect();
+    await c.del('schema:form:v1');
+    c.disconnect();
+    console.log('  已清字段表单缓存');
+  } catch (e) {
+    console.warn(`  ! 字段缓存没清掉（${(e as Error).message}）——重启后端或等 5 分钟也会生效`);
+  }
+}
+
 async function seedFields() {
   console.log('▸ 字段字典…');
   const groupIds = new Map<string, string>();
@@ -353,16 +374,18 @@ async function seedFields() {
       type: f.type as never,
       groupId,
       options: (f.options ?? undefined) as Prisma.InputJsonValue | undefined,
-      placeholder: f.placeholder,
-      helpText: f.helpText,
+      // 必须 ?? null，不能留 undefined：Prisma 的 update 会跳过 undefined，
+      // 于是"从种子里删掉一句说明"永远洗不掉数据库里的旧值。
+      placeholder: f.placeholder ?? null,
+      helpText: f.helpText ?? null,
       required: f.required ?? false,
       visibility: f.visibility,
       isCore: f.isCore,
       isPreference: f.isPreference ?? false,
-      weightKey: f.weightKey,
-      minValue: f.minValue,
-      maxValue: f.maxValue,
-      maxLength: f.maxLength,
+      weightKey: f.weightKey ?? null,
+      minValue: f.minValue ?? null,
+      maxValue: f.maxValue ?? null,
+      maxLength: f.maxLength ?? null,
       sort: f.sort,
       // 尊重字段上的开关：写死 true 的话，停用某个字段的配置永远生效不了
       enabled: f.enabled ?? true,
@@ -373,6 +396,10 @@ async function seedFields() {
       update: data,
     });
   }
+  // 字段表单有 Redis 缓存，不清的话种子改完要等缓存过期才生效——
+  // 这个坑很隐蔽：数据库明明改了，接口返回的还是旧的。
+  await clearSchemaCache();
+
   console.log(`  ${FIELD_GROUPS.length} 个分组，${FIELDS.length} 个字段（${FIELDS.filter((f) => !f.isCore).length} 个走 EAV，可随时增删）`);
 }
 
