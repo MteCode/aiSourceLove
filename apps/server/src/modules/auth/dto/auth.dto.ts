@@ -28,6 +28,12 @@ export class SmsLoginDto {
   @IsOptional()
   @IsString()
   inviteMatchmakerId?: string;
+
+  /** 管理员邀请码。带上它注册的人才允许申请成为红娘 */
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  adminInviteCode?: string;
 }
 
 export class PasswordLoginDto {

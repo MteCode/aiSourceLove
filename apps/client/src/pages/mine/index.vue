@@ -11,6 +11,11 @@ import { confirm, navigateTo } from '@/utils/ui';
 const user = useUserStore();
 const matchmakerStatus = ref<string>('');
 
+/** 已是红娘（任何状态）都要能进去看；否则只有管理员邀请来的才显示申请入口 */
+const showMatchmakerEntry = computed(
+  () => !!matchmakerStatus.value || !!user.user?.canApplyMatchmaker,
+);
+
 const statusText = computed(() =>
   user.profileStatus ? PROFILE_STATUS_LABEL[user.profileStatus] : '未创建',
 );
@@ -138,8 +143,12 @@ function goto(url: string): void {
       </view>
     </view>
 
-    <!-- 红娘入口 -->
-    <view class="yq-card">
+    <!--
+      红娘入口。已经是红娘的照常进工作台；不是红娘的要看注册来路——
+      红娘分享来的人只能是客户，管理员邀请码来的才给"成为红娘"。
+      两者都不满足时整块不渲染，而不是渲染一个点了会被拒的入口。
+    -->
+    <view v-if="showMatchmakerEntry" class="yq-card">
       <view class="row" @tap="goMatchmaker">
         <text class="row-label">
           {{ matchmakerStatus === 'ACTIVE' ? '红娘工作台' : '成为红娘' }}

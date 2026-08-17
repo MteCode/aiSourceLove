@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Param, Post, Put, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { LogAction, Public, RequirePermissions } from '@/common/decorators';
+import { CurrentUser, LogAction, Public, RequirePermissions } from '@/common/decorators';
+import type { AuthUser } from '@/common/types/auth-user';
 import { SystemService } from './system.service';
 import {
   CreateSysUserDto,
@@ -103,4 +104,32 @@ export class SystemController {
   regionTree() {
     return this.system.regionTree();
   }
+  // ── 管理员邀请码 ──
+
+  @Get('invites')
+  @RequirePermissions('system:user:list')
+  @ApiOperation({ summary: '邀请码列表' })
+  listInvites() {
+    return this.system.listInvites();
+  }
+
+  @Post('invites')
+  @RequirePermissions('system:user:edit')
+  @LogAction('系统管理', '生成邀请码')
+  @ApiOperation({ summary: '生成管理员邀请码（带此码注册的人才能申请当红娘）' })
+  createInvite(
+    @Body() dto: { remark?: string; expiresInDays?: number; maxUses?: number },
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.system.createInvite(dto, user.userId);
+  }
+
+  @Put('invites/:id/disable')
+  @RequirePermissions('system:user:edit')
+  @LogAction('系统管理', '停用邀请码')
+  @ApiOperation({ summary: '停用邀请码' })
+  disableInvite(@Param('id') id: string) {
+    return this.system.disableInvite(id);
+  }
+
 }

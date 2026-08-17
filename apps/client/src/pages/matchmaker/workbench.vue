@@ -1,12 +1,48 @@
 <script setup lang="ts">
-import { onShow } from '@dcloudio/uni-app';
+import { onShareAppMessage, onShareTimeline, onShow } from '@dcloudio/uni-app';
 import { ref } from 'vue';
 import { INTRODUCTION_STATUS_LABEL, type MatchmakerStatsDto } from '@yuanqiao/shared';
 import { matchmakerApi } from '@/api';
+import { useUserStore } from '@/stores/user';
 import { fen2yuan } from '@/utils/format';
 import { hideLoading, loading, navigateTo } from '@/utils/ui';
 
 const stats = ref<MatchmakerStatsDto | null>(null);
+const user = useUserStore();
+
+/**
+ * 分享链接带上自己的红娘 id，客户注册时自动挂到名下。
+ *
+ * 落地页选登录页而不是广场：从分享进来的多半是新用户，
+ * 直接给广场他会先看到一堆"登录后可见"，反而流失。
+ * 参数名用 mm，短一点——小程序码里的 query 有长度限制。
+ */
+function sharePath(): string {
+  const id = user.user?.matchmakerId ?? '';
+  return id ? `/pages/login/index?mm=${id}` : '/pages/login/index';
+}
+
+onShareAppMessage(() => ({
+  title: '缘桥 · 认真的人，值得被认真对待',
+  path: sharePath(),
+}));
+
+// 分享到朋友圈，安卓微信支持
+onShareTimeline(() => ({
+  title: '缘桥 · 认真的人，值得被认真对待',
+  query: user.user?.matchmakerId ? `mm=${user.user.matchmakerId}` : '',
+}));
+
+/**
+ * 主动唤起分享面板。
+ * 小程序不允许代码直接调起转发，只能由 button open-type=share 触发，
+ * 所以这里只负责在没配好时给出可读的提示，真正的转发在模板里。
+ */
+function onShareTap(): void {
+  if (!user.user?.matchmakerId) {
+    uni.showModal({ title: '暂不可用', content: '红娘身份审核通过后才能分享拉新。', showCancel: false });
+  }
+}
 
 async function load(): Promise<void> {
   loading();
@@ -32,6 +68,15 @@ function gotoTab(url: string): void {
 
 <template>
   <view class="yq-page">
+    <!-- 拉新入口。小程序禁止代码直接调起转发，必须用 open-type="share" 的 button -->
+    <view class="share-card">
+      <view class="share-text">
+        <text class="share-title">邀请客户加入</text>
+        <text class="share-sub">通过你分享的链接注册的客户，自动归到你名下</text>
+      </view>
+      <button class="share-btn" open-type="share" @tap="onShareTap">分享给客户</button>
+    </view>
+
     <view class="head">
       <view class="head-item">
         <text class="num">{{ stats?.memberCount ?? 0 }}</text>
@@ -101,6 +146,44 @@ function gotoTab(url: string): void {
 </template>
 
 <style lang="scss" scoped>
+.share-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 20rpx;
+  padding: 28rpx;
+  background: linear-gradient(135deg, #e05a7d 0%, #e87492 100%);
+  border-radius: $yq-radius;
+}
+
+.share-title {
+  display: block;
+  color: #fff;
+  font-size: 32rpx;
+  font-weight: 600;
+}
+
+.share-sub {
+  display: block;
+  margin-top: 8rpx;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 24rpx;
+}
+
+.share-btn {
+  flex-shrink: 0;
+  margin: 0 0 0 20rpx;
+  padding: 0 28rpx;
+  height: 64rpx;
+  line-height: 64rpx;
+  font-size: 26rpx;
+  color: #e05a7d;
+  background: #fff;
+  border-radius: 32rpx;
+
+  &::after { border: none; }
+}
+
 .head {
   display: flex;
   padding: 40rpx 20rpx;

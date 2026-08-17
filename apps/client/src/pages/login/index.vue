@@ -21,11 +21,9 @@ const phoneValid = computed(() => /^1[3-9]\d{9}$/.test(phone.value));
 const canSend = computed(() => phoneValid.value && countdown.value === 0 && !sending.value);
 const canLogin = computed(() => phoneValid.value && code.value.length >= 4 && !logging.value);
 
-// 扫红娘的邀请码进来，先存下，注册成功那一刻绑定归属
-onLoad((options) => {
-  const invite = options?.invite || options?.inviteMatchmakerId;
-  if (invite) inviteStore.set(invite);
-});
+// 分享链接直接指向登录页时在这里捡参数。
+// App.onLaunch 也捡一次——分享可能指向广场等任意页面，只在登录页捡会漏。
+onLoad((options) => inviteStore.capture(options));
 
 async function sendCode(): Promise<void> {
   if (!canSend.value) return;

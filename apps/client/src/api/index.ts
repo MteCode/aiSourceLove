@@ -26,8 +26,8 @@ export const authApi = {
   sendSmsCode(phone: string, scene: 'login' | 'bind' | 'reset' = 'login') {
     return request.post<{ success: boolean }>('/auth/sms-code', { phone, scene });
   },
-  smsLogin(phone: string, code: string, inviteMatchmakerId?: string) {
-    return request.post<LoginResult>('/auth/login/sms', { phone, code, inviteMatchmakerId });
+  smsLogin(phone: string, code: string, inviteMatchmakerId?: string, adminInviteCode?: string) {
+    return request.post<LoginResult>('/auth/login/sms', { phone, code, inviteMatchmakerId, adminInviteCode });
   },
   wxMiniLogin(code: string, extra?: { nickname?: string; avatar?: string }) {
     return request.post<LoginResult>('/auth/login/wx-mini', { code, ...extra });

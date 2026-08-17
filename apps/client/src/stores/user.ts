@@ -20,7 +20,7 @@ export const useUserStore = defineStore('user', () => {
 
   async function loginBySms(phone: string, code: string): Promise<void> {
     const invite = inviteStore.get();
-    const res = await authApi.smsLogin(phone, code, invite || undefined);
+    const res = await authApi.smsLogin(phone, code, invite?.mm, invite?.inv);
     tokenStore.set(res.accessToken, res.refreshToken);
     user.value = res.user;
     // 归属只在注册那一刻绑定，绑过就不该再留着

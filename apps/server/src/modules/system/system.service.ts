@@ -249,4 +249,39 @@ export class SystemService {
       }));
     return build('__root__');
   }
+  // ── 管理员邀请码 ──
+  //
+  // 用途：区分注册来路。带这个码注册的人才允许申请成为红娘，
+  // 红娘自己分享出去的人只能是客户。
+
+  async listInvites() {
+    return this.prisma.adminInvite.findMany({ orderBy: { createdAt: 'desc' }, take: 100 });
+  }
+
+  async createInvite(input: { remark?: string; expiresInDays?: number; maxUses?: number }, operatorId: string) {
+    // 短码：去掉 0/O/1/I 这类形近字符，运营要口头念给人听
+    const ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+    let code = '';
+    for (let i = 0; i < 8; i++) code += ALPHABET[Math.floor(Math.random() * ALPHABET.length)];
+
+    return this.prisma.adminInvite.create({
+      data: {
+        code,
+        remark: input.remark ?? null,
+        createdBy: operatorId,
+        expiresAt: input.expiresInDays
+          ? new Date(Date.now() + input.expiresInDays * 24 * 3600 * 1000)
+          : null,
+        maxUses: input.maxUses ?? 0,
+      },
+    });
+  }
+
+  /// 停用而不是删除：已经发出去的码要留痕，出问题能追是哪一批
+  async disableInvite(id: string) {
+    const inv = await this.prisma.adminInvite.findUnique({ where: { id } });
+    if (!inv) throw new NotFoundException('邀请码不存在');
+    return this.prisma.adminInvite.update({ where: { id }, data: { enabled: false } });
+  }
+
 }

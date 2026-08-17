@@ -30,7 +30,7 @@ export class AuthController {
   @Post('login/sms')
   @ApiOperation({ summary: '手机号验证码登录（号码不存在则自动注册）' })
   smsLogin(@Body() dto: SmsLoginDto, @ClientIp() ip: string): Promise<LoginResult> {
-    return this.auth.smsLogin(dto.phone, dto.code, ip, dto.inviteMatchmakerId);
+    return this.auth.smsLogin(dto.phone, dto.code, ip, dto.inviteMatchmakerId, dto.adminInviteCode);
   }
 
   @Public()

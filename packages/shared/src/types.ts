@@ -76,6 +76,11 @@ export interface CurrentUser {
   vipExpireAt: string | null;
   /** 该用户是红娘时有值 */
   matchmakerId: string | null;
+  /**
+   * 能否申请成为红娘。
+   * 红娘分享来的人是客户，不给这个入口；管理员分享来的才给。
+   */
+  canApplyMatchmaker: boolean;
 }
 
 // ============ 模块1：动态字段字典 ============

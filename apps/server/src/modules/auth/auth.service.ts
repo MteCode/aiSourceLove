@@ -91,14 +91,18 @@ export class AuthService {
     code: string,
     ip: string,
     inviteMatchmakerId?: string,
+    adminInviteCode?: string,
   ): Promise<LoginResult> {
     await this.verifySmsCode(phone, 'login', code);
 
     let user = await this.prisma.user.findUnique({ where: { phone } });
 
     if (!user) {
-      user = await this.registerMember(phone, inviteMatchmakerId);
-    } else if (user.deletedAt) {
+      user = await this.registerMember(phone, inviteMatchmakerId, adminInviteCode);
+    }
+    // 已存在的用户不碰归属红娘——先到先得是业务定的规则。
+    // 老客户扫了别的红娘的码也不改归属，否则红娘之间会互相撬客户。
+    else if (user.deletedAt) {
       throw new BizException('该账号已注销', 40312);
     } else if (user.status === 'BANNED') {
       throw new BizException('该账号已被封禁，如有疑问请联系客服', 40313);
@@ -175,7 +179,35 @@ export class AuthService {
     return this.issueTokens(user.id, user.phone, ip);
   }
 
-  private async registerMember(phone: string, inviteMatchmakerId?: string) {
+  /**
+   * 校验管理员邀请码。
+   * 无效/过期/用完都当没带——不报错，用户照样能注册，只是不给红娘入口。
+   * 注册流程绝不能因为一个可选参数失败。
+   */
+  private async consumeAdminInvite(code?: string): Promise<boolean> {
+    if (!code) return false;
+    const inv = await this.prisma.adminInvite.findFirst({
+      where: {
+        code,
+        enabled: true,
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+      },
+    });
+    if (!inv) return false;
+    if (inv.maxUses > 0 && inv.usedCount >= inv.maxUses) return false;
+
+    await this.prisma.adminInvite.update({
+      where: { id: inv.id },
+      data: { usedCount: { increment: 1 } },
+    });
+    return true;
+  }
+
+  private async registerMember(
+    phone: string,
+    inviteMatchmakerId?: string,
+    adminInviteCode?: string,
+  ) {
     const memberRole = await this.prisma.role.findUnique({ where: { code: RoleCode.MEMBER } });
     if (!memberRole) {
       throw new BizException('系统未初始化（缺少 MEMBER 角色），请先执行 db:seed', 50004);
@@ -191,6 +223,10 @@ export class AuthService {
       matchmakerId = mm?.id ?? null;
     }
 
+    // 来路决定身份：红娘分享来的只能是客户，管理员邀请码来的才允许申请当红娘。
+    // 两者同时带上时以红娘为准——红娘的分享是拉客户，不该顺带给出红娘入口。
+    const canApplyMatchmaker = matchmakerId ? false : await this.consumeAdminInvite(adminInviteCode);
+
     return this.prisma.user.create({
       data: {
         phone,
@@ -198,6 +234,7 @@ export class AuthService {
         roles: { create: { roleId: memberRole.id } },
         // 此刻还没有档案，先把归属红娘挂在用户上，建档案时转写过去
         inviteMatchmakerId: matchmakerId,
+        canApplyMatchmaker,
       },
     });
   }
@@ -251,7 +288,7 @@ export class AuthService {
       : null;
     const user = await this.prisma.user.findUnique({
       where: { id: ctx.userId },
-      select: { avatar: true },
+      select: { avatar: true, canApplyMatchmaker: true },
     });
 
     return {
@@ -266,6 +303,8 @@ export class AuthService {
       isVip: ctx.isVip,
       vipExpireAt: ctx.vipExpireAt?.toISOString() ?? null,
       matchmakerId: ctx.matchmakerId,
+      // 已经是红娘的人当然不用再申请；其余看注册来路
+      canApplyMatchmaker: !ctx.matchmakerId && (user?.canApplyMatchmaker ?? false),
     };
   }
 

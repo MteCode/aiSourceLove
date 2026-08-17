@@ -1,8 +1,13 @@
 <script setup lang="ts">
 import { onLaunch, onShow } from '@dcloudio/uni-app';
 import { useUserStore } from '@/stores/user';
+import { inviteStore } from '@/utils/storage';
 
-onLaunch(() => {
+onLaunch((options) => {
+  // 分享链接可能指向任意页面，只在登录页捡参数会漏。
+  // 这里是所有进入方式的必经之路：冷启动、分享卡片、扫码。
+  inviteStore.capture(options?.query);
+
   // 冷启动先恢复登录态：有 token 就静默拉一次 me，
   // 失败（token 过期或被封）会自动清态，由各页面的守卫引导去登录
   const user = useUserStore();

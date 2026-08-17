@@ -212,26 +212,58 @@ model User {
   /// 建档案时转写到 Profile.matchmakerId。丢了就等于红娘白拉人头，所以必须落库不能放 Redis。
   inviteMatchmakerId String? @db.VarChar(30)
 
+  /// 能否申请成为红娘。
+  ///
+  /// 业务规则：红娘分享出去的人只能是客户，管理员分享出去的人才允许申请当红娘。
+  /// 默认 false——没有来路的自主注册也不给入口，宁可让运营手动开，
+  /// 也不要让谁都能申请把审核队列淹掉。
+  canApplyMatchmaker Boolean @default(false)
+
   lastLoginAt DateTime?
   lastLoginIp String?   @db.VarChar(64)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
-  roles          UserRole[]
-  profile        Profile?
-  matchmaker     Matchmaker?
-  orders         Order[]
-  benefitGrants  BenefitGrant[]
-  benefitUsages  BenefitUsage[]
-  consumeLogs    BenefitConsumeLog[]
-  unlocks        ContactUnlock[]     @relation("UnlockViewer")
-  views          ProfileView[]       @relation("ViewVisitor")
-  operationLogs  OperationLog[]
+  roles         UserRole[]
+  profile       Profile?
+  matchmaker    Matchmaker?
+  orders        Order[]
+  benefitGrants BenefitGrant[]
+  benefitUsages BenefitUsage[]
+  consumeLogs   BenefitConsumeLog[]
+  unlocks       ContactUnlock[]     @relation("UnlockViewer")
+  views         ProfileView[]       @relation("ViewVisitor")
+  operationLogs OperationLog[]
 
   @@index([status, deletedAt])
   @@index([vipExpireAt])
   @@map("sys_user")
+}
+
+/// 管理员邀请码。
+///
+/// 用途：区分注册来路。红娘分享出去的人只能是客户，管理员分享出去的人才能申请当红娘。
+/// 为什么要一张表而不是在链接里塞个 `src=admin`：那种参数谁都能手改，
+/// 等于"申请当红娘"这道门形同虚设。虽然入驻本身还要审核，
+/// 但让所有人都能提交申请会把审核队列淹掉。
+model AdminInvite {
+  id        String    @id @default(cuid())
+  /// 分享链接里带的码，短一点方便肉眼核对
+  code      String    @unique @db.VarChar(32)
+  /// 备注这个码发给谁了，撤销时才知道撤的是哪一批
+  remark    String?   @db.VarChar(100)
+  createdBy String?
+  /// null = 永不过期
+  expiresAt DateTime?
+  /// 0 = 不限次数
+  maxUses   Int       @default(0)
+  usedCount Int       @default(0)
+  enabled   Boolean   @default(true)
+  createdAt DateTime  @default(now())
+
+  @@index([enabled, expiresAt])
+  @@map("sys_admin_invite")
 }
 
 model Role {
@@ -300,14 +332,14 @@ model DictType {
 }
 
 model DictItem {
-  id       String   @id @default(cuid())
-  typeId   String
-  type     DictType @relation(fields: [typeId], references: [id], onDelete: Cascade)
-  value    String   @db.VarChar(100)
-  label    String   @db.VarChar(100)
-  sort     Int      @default(0)
-  enabled  Boolean  @default(true)
-  extra    Json?
+  id      String   @id @default(cuid())
+  typeId  String
+  type    DictType @relation(fields: [typeId], references: [id], onDelete: Cascade)
+  value   String   @db.VarChar(100)
+  label   String   @db.VarChar(100)
+  sort    Int      @default(0)
+  enabled Boolean  @default(true)
+  extra   Json?
 
   @@unique([typeId, value])
   @@map("sys_dict_item")
@@ -341,14 +373,14 @@ model OperationLog {
 /// 要全量三级请导入民政部行政区划数据到这张表，结构不用改。
 model Region {
   /// 行政区划代码 adcode
-  code     String  @id @db.VarChar(12)
-  name     String  @db.VarChar(50)
+  code       String  @id @db.VarChar(12)
+  name       String  @db.VarChar(50)
   /// 1=省 2=市 3=区县
-  level    Int
+  level      Int
   parentCode String? @db.VarChar(12)
-  lat      Float?
-  lng      Float?
-  sort     Int     @default(0)
+  lat        Float?
+  lng        Float?
+  sort       Int     @default(0)
 
   @@index([parentCode])
   @@index([level])
@@ -391,11 +423,11 @@ model FieldDef {
 
   /// true = 映射到 Profile 固定列（能建索引，参与硬过滤）
   /// false = 存 ProfileFieldValue（EAV），加字段不用改表
-  isCore Boolean @default(false)
+  isCore       Boolean @default(false)
   /// 是否同时出现在"择偶要求"表单里
   isPreference Boolean @default(false)
   /// 参与 L2 打分时对应的权重键，见 shared/constants DEFAULT_MATCH_WEIGHTS
-  weightKey String? @db.VarChar(30)
+  weightKey    String? @db.VarChar(30)
 
   minValue  Float?
   maxValue  Float?
@@ -608,12 +640,12 @@ model Matchmaker {
   userId String @unique
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  name     String  @db.VarChar(50)
-  phone    String  @db.VarChar(20)
-  avatar   String? @db.VarChar(500)
-  cityCode String? @db.VarChar(12)
-  cityName String? @db.VarChar(50)
-  bio      String? @db.Text
+  name       String  @db.VarChar(50)
+  phone      String  @db.VarChar(20)
+  avatar     String? @db.VarChar(500)
+  cityCode   String? @db.VarChar(12)
+  cityName   String? @db.VarChar(50)
+  bio        String? @db.Text
   /// 身份证/工牌等入驻材料
   certImages Json?
 
@@ -711,8 +743,8 @@ model Commission {
   status CommissionStatus @default(PENDING)
 
   /// 关联的订单 id 或 牵线单 id
-  refId String? @db.VarChar(30)
-  refNo String? @db.VarChar(30)
+  refId  String? @db.VarChar(30)
+  refNo  String? @db.VarChar(30)
   remark String? @db.VarChar(200)
 
   /// 冷静期结束、转为可提现的时间（防订单退款后钱已被提走）
@@ -742,15 +774,15 @@ model Withdrawal {
   status WithdrawalStatus @default(PENDING)
 
   /// 提现方式与账号
-  method  String  @default("WECHAT") @db.VarChar(20)
-  account String? @db.VarChar(100)
+  method   String  @default("WECHAT") @db.VarChar(20)
+  account  String? @db.VarChar(100)
   realName String? @db.VarChar(50)
 
-  reviewedBy String?   @db.VarChar(30)
-  reviewedAt DateTime?
-  rejectReason String? @db.VarChar(200)
-  paidAt     DateTime?
-  remark     String?   @db.VarChar(200)
+  reviewedBy   String?   @db.VarChar(30)
+  reviewedAt   DateTime?
+  rejectReason String?   @db.VarChar(200)
+  paidAt       DateTime?
+  remark       String?   @db.VarChar(200)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -768,11 +800,11 @@ model Withdrawal {
 
 /// 联系方式解锁记录。有这条记录才看得到对方手机号/微信。
 model ContactUnlock {
-  id           String  @id @default(cuid())
-  viewerUserId String
-  viewer       User    @relation("UnlockViewer", fields: [viewerUserId], references: [id], onDelete: Cascade)
+  id              String  @id @default(cuid())
+  viewerUserId    String
+  viewer          User    @relation("UnlockViewer", fields: [viewerUserId], references: [id], onDelete: Cascade)
   targetProfileId String
-  target       Profile @relation("UnlockTarget", fields: [targetProfileId], references: [id], onDelete: Cascade)
+  target          Profile @relation("UnlockTarget", fields: [targetProfileId], references: [id], onDelete: Cascade)
 
   source         UnlockSource
   /// 牵线解锁时关联的牵线单
@@ -811,9 +843,9 @@ model ProfileView {
 // ═══════════════════════════════════════════════
 
 model VipPackage {
-  id       String  @id @default(cuid())
-  name     String  @db.VarChar(50)
-  subtitle String? @db.VarChar(100)
+  id            String  @id @default(cuid())
+  name          String  @db.VarChar(50)
+  subtitle      String? @db.VarChar(100)
   /// 分
   price         Int
   /// 划线原价，分
@@ -843,8 +875,8 @@ model Order {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
 
-  packageId String
-  package   VipPackage @relation(fields: [packageId], references: [id], onDelete: Restrict)
+  packageId       String
+  package         VipPackage @relation(fields: [packageId], references: [id], onDelete: Restrict)
   /// 下单时的套餐快照。套餐改价/改权益后，历史订单还能还原当时买的是什么。
   packageSnapshot Json
 
@@ -857,8 +889,8 @@ model Order {
   /// 超时未支付自动关闭的时间点
   expireAt DateTime?
 
-  refundAmount Int     @default(0)
-  refundReason String? @db.VarChar(200)
+  refundAmount Int       @default(0)
+  refundReason String?   @db.VarChar(200)
   refundedAt   DateTime?
 
   /// 归属红娘，用于分润
@@ -888,7 +920,7 @@ model PaymentTxn {
   order   Order  @relation(fields: [orderId], references: [id], onDelete: Restrict)
 
   /// 我方交易号（发给渠道的 out_trade_no）
-  outTradeNo String @unique @db.VarChar(40)
+  outTradeNo    String  @unique @db.VarChar(40)
   /// 渠道交易号。唯一约束保证同一笔回调重放不会二次入账。
   transactionId String? @unique @db.VarChar(64)
 
@@ -901,8 +933,8 @@ model PaymentTxn {
   rawNotify  Json?
   notifiedAt DateTime?
   /// 回调处理失败次数，超阈值告警
-  retryCount Int @default(0)
-  errorMsg   String? @db.VarChar(500)
+  retryCount Int       @default(0)
+  errorMsg   String?   @db.VarChar(500)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -964,9 +996,9 @@ model BenefitConsumeLog {
   periodKey String      @db.VarChar(10)
 
   /// 业务类型：UNLOCK_CONTACT / VIEW_PROFILE / AI_MATCH ...
-  bizType String @db.VarChar(30)
+  bizType String  @db.VarChar(30)
   /// 幂等键，如 unlock:userA:profileB
-  bizKey  String @unique @db.VarChar(120)
+  bizKey  String  @unique @db.VarChar(120)
   remark  String? @db.VarChar(200)
 
   createdAt DateTime @default(now())
