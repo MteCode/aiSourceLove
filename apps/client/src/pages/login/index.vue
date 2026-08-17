@@ -71,16 +71,29 @@ async function loginByWx(): Promise<void> {
   }
 }
 
-/** 没档案的新用户直接引导去填资料——这是留存的第一道坎 */
+/**
+ * 没档案的新用户直接引导去填资料——这是留存的第一道坎。
+ *
+ * 用 reLaunch 而不是 redirectTo + setTimeout：
+ * - 原来先弹 2 秒 toast，再等 600ms 跳转，跳转发生在 toast 还显示着的时候，
+ *   而且没有 fail 回调，跳不动就完全静默——表现就是"登录成功了但进不去"。
+ * - reLaunch 会清空页面栈，登录页本来就不该能返回；
+ *   它对 tab 页和非 tab 页都适用，不用分两个 API。
+ * - fail 必须处理：跳转失败是死路，不能让用户对着登录页干瞪眼。
+ */
 function afterLogin(): void {
-  toast('登录成功', 'success');
-  setTimeout(() => {
-    if (!user.profileId) {
-      uni.redirectTo({ url: '/pages/profile/edit?first=1' });
-    } else {
-      uni.switchTab({ url: '/pages/square/index' });
-    }
-  }, 600);
+  const url = user.profileId ? '/pages/square/index' : '/pages/profile/edit?first=1';
+  uni.reLaunch({
+    url,
+    success: () => toast('登录成功', 'success'),
+    fail: (e) => {
+      uni.showModal({
+        title: '进入失败',
+        content: `登录已成功，但页面跳转失败：${e?.errMsg ?? '未知原因'}。请重启小程序。`,
+        showCancel: false,
+      });
+    },
+  });
 }
 </script>
 
