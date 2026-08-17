@@ -313,6 +313,22 @@ export interface MatchQueryDto extends PageQuery {
 
 // ============ 模块3：红娘 ============
 
+/**
+ * 给客户看的红娘名片。
+ *
+ * 刻意不复用 MatchmakerDto：那个带 commissionRate（分润比例）和业绩数字，
+ * 是内部经营数据。客户只需要知道"我的红娘是谁、怎么联系她"。
+ */
+export interface MyMatchmakerDto {
+  id: string;
+  name: string;
+  avatar: string | null;
+  cityName: string | null;
+  bio: string | null;
+  /** 客户要能直接打过去，这是这个接口存在的意义 */
+  phone: string;
+}
+
 export interface MatchmakerDto {
   id: string;
   userId: string;

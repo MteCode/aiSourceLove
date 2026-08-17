@@ -4,14 +4,26 @@ import { onShow } from '@dcloudio/uni-app';
 import { computed, ref } from 'vue';
 import { PROFILE_STATUS_LABEL, ProfileStatus } from '@yuanqiao/shared';
 import { matchmakerApi } from '@/api';
+import type { MyMatchmakerDto } from '@yuanqiao/shared';
 import { useUserStore } from '@/stores/user';
 import { formatDate } from '@/utils/format';
 import { confirm, navigateTo } from '@/utils/ui';
 
 const user = useUserStore();
 const matchmakerStatus = ref<string>('');
+/** 我的专属红娘。支付关闭时，这是「权益不足」唯一的出路，必须找得到 */
+const myMm = ref<MyMatchmakerDto | null>(null);
 
 /** 已是红娘（任何状态）都要能进去看；否则只有管理员邀请来的才显示申请入口 */
+function callMm(): void {
+  if (!myMm.value) return;
+  uni.makePhoneCall({
+    phoneNumber: myMm.value.phone,
+    // 用户按取消也会走 fail，不该弹错误提示打扰他
+    fail: () => {},
+  });
+}
+
 const showMatchmakerEntry = computed(
   () => !!matchmakerStatus.value || !!user.user?.canApplyMatchmaker,
 );
@@ -31,6 +43,7 @@ const statusTip = computed(() => {
 async function loadMatchmaker(): Promise<void> {
   if (!user.logged) return;
   try {
+    myMm.value = await matchmakerApi.myMatchmaker().catch(() => null);
     const mm = await matchmakerApi.me();
     matchmakerStatus.value = mm?.status ?? '';
   } catch {
@@ -143,6 +156,17 @@ function goto(url: string): void {
       </view>
     </view>
 
+    <!-- 我的专属红娘。有归属才显示；点电话直接拨号 -->
+    <view v-if="myMm" class="yq-card mm-card">
+      <image v-if="myMm.avatar" class="mm-avatar" :src="myMm.avatar" mode="aspectFill" />
+      <view v-else class="mm-avatar mm-avatar--empty"><text>{{ myMm.name.slice(0, 1) }}</text></view>
+      <view class="mm-info">
+        <text class="mm-name">我的红娘 · {{ myMm.name }}</text>
+        <text class="mm-bio yq-muted">{{ myMm.bio || myMm.cityName || '为你牵线搭桥' }}</text>
+      </view>
+      <text class="mm-call" @tap="callMm">联系</text>
+    </view>
+
     <!--
       红娘入口。已经是红娘的照常进工作台；不是红娘的要看注册来路——
       红娘分享来的人只能是客户，管理员邀请码来的才给"成为红娘"。
@@ -180,6 +204,57 @@ function goto(url: string): void {
 </template>
 
 <style lang="scss" scoped>
+.mm-card {
+  display: flex;
+  align-items: center;
+}
+
+.mm-avatar {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.mm-avatar--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: $yq-primary;
+  color: #fff;
+  font-size: 36rpx;
+}
+
+.mm-info {
+  flex: 1;
+  min-width: 0;
+  margin-left: 20rpx;
+}
+
+.mm-name {
+  display: block;
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.mm-bio {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 24rpx;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.mm-call {
+  flex-shrink: 0;
+  padding: 10rpx 28rpx;
+  font-size: 26rpx;
+  color: #fff;
+  background: $yq-primary;
+  border-radius: 30rpx;
+}
+
 .header {
   padding: 50rpx 40rpx;
   background: linear-gradient(120deg, #e05a7d, #f0a0b6);

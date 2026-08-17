@@ -9,6 +9,7 @@ import type {
   MatchResultDto,
   MatchmakerDto,
   MatchmakerStatsDto,
+  MyMatchmakerDto,
   OrderDto,
   PageResult,
   ProfileBriefDto,
@@ -168,6 +169,11 @@ export const orderApi = {
 // ───────── 红娘 ─────────
 
 export const matchmakerApi = {
+  /** 我的专属红娘。客户视角，不含分润等内部数据 */
+  myMatchmaker() {
+    return request.get<MyMatchmakerDto | null>('/matchmakers/me/my-matchmaker');
+  },
+
   apply(body: { name: string; phone: string; cityCode?: string; cityName?: string; bio?: string }) {
     return request.post<MatchmakerDto>('/matchmakers/apply', body);
   },

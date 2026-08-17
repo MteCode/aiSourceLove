@@ -6,6 +6,7 @@ import {
   MatchmakerDto,
   MatchmakerStatsDto,
   MatchmakerStatus,
+  MyMatchmakerDto,
   PageResult,
   RoleCode,
   startOfMonth,
@@ -262,4 +263,29 @@ export class MatchmakerService {
       createdAt: mm.createdAt.toISOString(),
     };
   }
+  /**
+   * 当前用户的专属红娘。
+   *
+   * 归属有两个来源，优先级不同：档案上的 matchmakerId 是最终态（运营可能在后台改过），
+   * 用户上的 inviteMatchmakerId 只是注册那一刻的暂存。所以先看档案，没档案才回落。
+   */
+  async myMatchmaker(userId: string): Promise<MyMatchmakerDto | null> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { inviteMatchmakerId: true, profile: { select: { matchmakerId: true } } },
+    });
+    const id = user?.profile?.matchmakerId ?? user?.inviteMatchmakerId;
+    if (!id) return null;
+
+    const mm = await this.prisma.matchmaker.findFirst({
+      where: { id, deletedAt: null },
+      select: { id: true, name: true, avatar: true, cityName: true, bio: true, phone: true, status: true },
+    });
+    // 已停用的红娘不该再作为联系人露出去，让运营重新分配
+    if (!mm || mm.status !== 'ACTIVE') return null;
+
+    const { status: _status, ...rest } = mm;
+    return rest;
+  }
+
 }

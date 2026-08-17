@@ -39,6 +39,12 @@ export class MatchmakerController {
     return this.matchmaker.apply(userId, dto);
   }
 
+  @Get('me/my-matchmaker')
+  @ApiOperation({ summary: '我的专属红娘（客户视角，不含分润等内部数据）' })
+  myMatchmaker(@CurrentUser() user: AuthUser) {
+    return this.matchmaker.myMatchmaker(user.userId);
+  }
+
   @Get('me')
   @ApiOperation({ summary: '我的红娘信息' })
   async me(@CurrentUser('userId') userId: string) {
