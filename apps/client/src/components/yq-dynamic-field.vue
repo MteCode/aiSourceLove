@@ -42,11 +42,25 @@ const regionRange = computed(() => [
   districts.value.length ? districts.value : [{ value: '', label: '不限' }],
 ]);
 
+/**
+ * 显示文字必须由**真实值**推出来，不能由三列下标推。
+ *
+ * 下标默认是 [0,0,0]，用它算文字的话，用户还没点开选择器就已经显示
+ * 「北京市 北京市 东城区」——看着填好了，modelValue 其实是空的。
+ * 结果是保存时被必填校验拦下，而用户盯着那行字完全不知道哪里没填。
+ */
 const regionText = computed(() => {
-  const p = provinces.value[regionIndex.value[0]];
-  const c = cities.value[regionIndex.value[1]];
-  const d = districts.value[regionIndex.value[2]];
-  return [p?.label, c?.label, d?.label].filter(Boolean).join(' ');
+  const code = props.modelValue as string | undefined;
+  if (!code) return '';
+  for (const p of provinces.value) {
+    for (const c of p.children ?? []) {
+      if (c.value === code) return `${p.label} ${c.label}`;
+      const d = (c.children ?? []).find((x) => x.value === code);
+      if (d) return `${p.label} ${c.label} ${d.label}`;
+    }
+  }
+  // 树还没加载完时先把 code 显示出来，总比空着让人以为没保存成功强
+  return code;
 });
 
 /** 已有值时把三列下标还原出来，否则重新进页面选过的会丢 */

@@ -68,13 +68,6 @@ export const profileApi = {
   submit() {
     return request.post<ProfileDto>('/profiles/me/submit');
   },
-  claim(serialNo?: string) {
-    return request.post<ProfileDto>('/profiles/me/claim', serialNo ? { serialNo } : {});
-  },
-  /** 按注册手机号查有没有能一键认领的档案 */
-  claimable() {
-    return request.get<ProfileDto | null>('/profiles/me/claimable');
-  },
   myAuditLogs() {
     return request.get<AuditLogDto[]>('/profiles/me/audit-logs');
   },

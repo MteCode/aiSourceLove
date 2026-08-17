@@ -79,7 +79,7 @@ function goReplace(url: string): void {
       <text class="intro-title">成为缘桥红娘</text>
       <view class="benefit"><text class="dot">·</text><text>名下会员购买会员卡，你可以拿到分润</text></view>
       <view class="benefit"><text class="dot">·</text><text>牵线成功另有成单奖励</text></view>
-      <view class="benefit"><text class="dot">·</text><text>可代录线下资料，会员之后凭编号认领</text></view>
+      <view class="benefit"><text class="dot">·</text><text>可代录线下收上来的资料，直接进系统参与匹配</text></view>
       <view class="benefit"><text class="dot">·</text><text>能看到名下会员的完整资料，方便精准撮合</text></view>
     </view>
 

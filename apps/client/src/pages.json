@@ -17,7 +17,6 @@
     { "path": "pages/profile/edit", "style": { "navigationBarTitleText": "我的资料" } },
     { "path": "pages/profile/preference", "style": { "navigationBarTitleText": "择偶要求" } },
     { "path": "pages/profile/photos", "style": { "navigationBarTitleText": "我的照片" } },
-    { "path": "pages/profile/claim", "style": { "navigationBarTitleText": "认领档案" } },
     { "path": "pages/profile/audit-log", "style": { "navigationBarTitleText": "审核记录" } },
 
     { "path": "pages/intro/detail", "style": { "navigationBarTitleText": "牵线详情" } },

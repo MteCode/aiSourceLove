@@ -124,7 +124,7 @@ function buildPayload(): Record<string, unknown> {
 async function save(silent = false): Promise<boolean> {
   const err = validate();
   if (err) {
-    toast(err);
+    uni.showModal({ title: '资料不完整', content: err, showCancel: false });
     return false;
   }
   saving.value = true;
@@ -160,10 +160,6 @@ function goPhotos(): void {
   uni.navigateTo({ url: '/pages/profile/photos' });
 }
 
-function goClaim(): void {
-  uni.navigateTo({ url: '/pages/profile/claim' });
-}
-
 onShow(load);
 </script>
 
@@ -185,8 +181,7 @@ onShow(load);
         资料已通过。修改关键信息后需要重新审核
       </text>
       <text v-else-if="isFirst" class="status-tip">
-        完善资料后提交审核，通过才能开始匹配。若红娘已线下帮你录过，可直接
-        <text class="link" @tap="goClaim">用编号认领</text>
+        完善资料后提交审核，通过才能开始匹配
       </text>
     </view>
 
@@ -206,10 +201,6 @@ onShow(load);
       </view>
       <view class="link-row" @tap="goPhotos">
         <text>我的照片</text>
-        <text class="arrow">›</text>
-      </view>
-      <view class="link-row" @tap="goClaim">
-        <text>认领红娘代录的档案</text>
         <text class="arrow">›</text>
       </view>
     </view>

@@ -107,11 +107,11 @@ function toggle(list: string[], value: string): void {
 
 async function save(): Promise<void> {
   if (form.ageMin && form.ageMax && form.ageMin > form.ageMax) {
-    toast('年龄下限不能大于上限');
+    uni.showModal({ title: '输入有误', content: '年龄下限不能大于上限', showCancel: false });
     return;
   }
   if (form.heightMin && form.heightMax && form.heightMin > form.heightMax) {
-    toast('身高下限不能大于上限');
+    uni.showModal({ title: '输入有误', content: '身高下限不能大于上限', showCancel: false });
     return;
   }
 

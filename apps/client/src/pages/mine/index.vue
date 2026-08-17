@@ -190,10 +190,6 @@ function goto(url: string): void {
     </view>
 
     <view class="yq-card">
-      <view class="row" @tap="go('/pages/profile/claim')">
-        <text class="row-label">认领档案</text>
-        <text class="arrow">›</text>
-      </view>
       <view v-if="user.logged" class="row" @tap="logout">
         <text class="row-label yq-danger">退出登录</text>
       </view>
