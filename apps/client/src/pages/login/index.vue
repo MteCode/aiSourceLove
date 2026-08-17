@@ -86,27 +86,25 @@ function afterLogin(): void {
 
 <template>
   <view class="login">
-    <!-- 背景光斑：纯渐变太平，两个模糊圆让画面有层次又不抢焦点 -->
-    <view class="blob blob--1" />
-    <view class="blob blob--2" />
+    <!-- 抽象双人意象：两团光晕 + 两条相向的曲线，末端几乎相触但不闭合。
+         刻意不画具象的人——小屏上的具象插画一定显廉价，留白反而有张力 -->
+    <view class="hero" />
+    <view class="vignette" />
 
     <view class="brand">
-      <view class="mark">
-        <text class="mark-text">缘</text>
-      </view>
-      <text class="name">缘桥</text>
-      <text class="slogan">认真的人，值得被认真对待</text>
+      <text class="name">同频</text>
+      <text class="name-en">TONGPIN</text>
+      <text class="slogan">在对的频率上，遇见对的人</text>
     </view>
 
     <view class="form">
-      <!-- 填充式输入框而不是「标签 + 下划线」列表：后者像设置页，不像登录 -->
       <view class="field">
         <input
           v-model="phone"
           class="input"
           type="number"
           maxlength="11"
-          placeholder="请输入手机号"
+          placeholder="手机号"
           placeholder-class="ph"
         />
       </view>
@@ -117,11 +115,11 @@ function afterLogin(): void {
           class="input"
           type="number"
           maxlength="6"
-          placeholder="请输入验证码"
+          placeholder="验证码"
           placeholder-class="ph"
         />
         <text :class="['send', { 'send--disabled': !canSend }]" @tap="sendCode">
-          {{ countdown > 0 ? `${countdown} 秒后重发` : '获取验证码' }}
+          {{ countdown > 0 ? `${countdown}s` : '获取验证码' }}
         </text>
       </view>
 
@@ -133,9 +131,6 @@ function afterLogin(): void {
       <button v-if="WX_LOGIN_ENABLED" class="btn btn--wx" @tap="loginByWx">微信一键登录</button>
       <!-- #endif -->
 
-      <text class="tip">未注册的手机号将自动创建账号</text>
-
-      <!-- 这块原来是空的。登录页的空白最该拿来回答"我为什么要注册" -->
       <view class="points">
         <view class="point">
           <text class="point-num">547</text>
@@ -154,7 +149,6 @@ function afterLogin(): void {
       </view>
     </view>
 
-    <!-- 协议放到底部安全区：它是合规要求，不该和主操作抢注意力 -->
     <view class="agree" @tap="agreed = !agreed">
       <view :class="['checkbox', { 'checkbox--on': agreed }]">
         <text v-if="agreed" class="tick">✓</text>
@@ -168,104 +162,103 @@ function afterLogin(): void {
 
 <style lang="scss" scoped>
 /**
- * 登录页。
+ * 登录页 · 深色科技风。
  *
- * 原来的问题：表单是「标签在左、输入在右、细线分隔」的列表样式，像设置页；
- * 主按钮用浅粉色，看着像禁用坏了；所有内容堆在上半屏，下面空一大块。
- * 这版改成填充式输入框 + 实心主按钮，并把协议挪到底部，让竖向节奏铺满整屏。
+ * 为什么弃用粉色：粉色渐变是婚恋产品的标配，也正因为标配才显廉价。
+ * 深底 + 青紫双色光是当下"科技/AI 产品"的通用语汇，
+ * 恰好我们的核心确实是一套匹配算法，不是浮夸。
  */
+
+/* 双色主调，深色背景下这两个色饱和度够但不刺眼 */
+$teal: #5eead4;
+$indigo: #818cf8;
+$ink: #070a12;
+$fg: #e8ecf4;
+
 .login {
   position: relative;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
   padding: 0 56rpx;
-  background: linear-gradient(170deg, #fff5f7 0%, #fdeef2 42%, #eef1fb 100%);
+  background: $ink;
   overflow: hidden;
 }
 
-/* 背景光斑，纯装饰，不接收点击 */
-.blob {
+.hero {
   position: absolute;
-  border-radius: 50%;
-  filter: blur(60rpx);
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 900rpx;
+  background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3NTAgOTAwIiB3aWR0aD0iNzUwIiBoZWlnaHQ9IjkwMCI+CiAgPGRlZnM+CiAgICA8cmFkaWFsR3JhZGllbnQgaWQ9ImdBIiBjeD0iNTAlIiBjeT0iNTAlIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iIzVFRUFENCIgc3RvcC1vcGFjaXR5PSIuNTUiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjNUVFQUQ0IiBzdG9wLW9wYWNpdHk9IjAiLz4KICAgIDwvcmFkaWFsR3JhZGllbnQ+CiAgICA8cmFkaWFsR3JhZGllbnQgaWQ9ImdCIiBjeD0iNTAlIiBjeT0iNTAlIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iIzgxOENGOCIgc3RvcC1vcGFjaXR5PSIuNTUiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjODE4Q0Y4IiBzdG9wLW9wYWNpdHk9IjAiLz4KICAgIDwvcmFkaWFsR3JhZGllbnQ+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImxpbmVBIiB4MT0iMCIgeTE9IjEiIHgyPSIxIiB5Mj0iMCI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiM1RUVBRDQiIHN0b3Atb3BhY2l0eT0iMCIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjU1JSIgc3RvcC1jb2xvcj0iIzVFRUFENCIgc3RvcC1vcGFjaXR5PSIuODUiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjQTVGM0ZDIiBzdG9wLW9wYWNpdHk9Ii4yIi8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJsaW5lQiIgeDE9IjEiIHkxPSIxIiB4Mj0iMCIgeTI9IjAiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjODE4Q0Y4IiBzdG9wLW9wYWNpdHk9IjAiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSI1NSUiIHN0b3AtY29sb3I9IiM4MThDRjgiIHN0b3Atb3BhY2l0eT0iLjg1Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iI0M3RDJGRSIgc3RvcC1vcGFjaXR5PSIuMiIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICAgIDxmaWx0ZXIgaWQ9InNvZnQiPjxmZUdhdXNzaWFuQmx1ciBzdGREZXZpYXRpb249IjE4Ii8+PC9maWx0ZXI+CiAgPC9kZWZzPgoKICA8IS0tIOS4pOWbouWFieaZle+8muS4jeaYr+WFt+ixoeeahOS6uu+8jOaYryLkuKTkuKrlrZjlnKgi44CC5YW36LGh5o+S55S75Zyo5bCP5bGP5LiK5LiA5a6a5buJ5Lu3IC0tPgogIDxjaXJjbGUgY3g9IjMwMCIgY3k9IjQyMCIgcj0iMjEwIiBmaWxsPSJ1cmwoI2dBKSIvPgogIDxjaXJjbGUgY3g9IjQ1MiIgY3k9IjQ3MCIgcj0iMjEwIiBmaWxsPSJ1cmwoI2dCKSIvPgoKICA8IS0tIOS4pOadoeebuOWQkeeahOabsue6v++8jOacq+err+WHoOS5juebuOinpuS9huS4jemXreWQiOKAlOKAlOeVmeeZveavlOeUu+a7oeabtOacieW8oOWKmyAtLT4KICA8ZyBmaWxsPSJub25lIiBzdHJva2UtbGluZWNhcD0icm91bmQiIGZpbHRlcj0idXJsKCNzb2Z0KSIgb3BhY2l0eT0iLjUiPgogICAgPHBhdGggZD0iTTEyMCA2OTAgQyAyMDAgNTIwLCAzMDAgNDcwLCAzNjYgNDM4IiBzdHJva2U9InVybCgjbGluZUEpIiBzdHJva2Utd2lkdGg9IjEwIi8+CiAgICA8cGF0aCBkPSJNNjMwIDY5MCBDIDU1MCA1MjAsIDQ1MCA0NzAsIDM4NiA0MzgiIHN0cm9rZT0idXJsKCNsaW5lQikiIHN0cm9rZS13aWR0aD0iMTAiLz4KICA8L2c+CiAgPGcgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIj4KICAgIDxwYXRoIGQ9Ik0xMjAgNjkwIEMgMjAwIDUyMCwgMzAwIDQ3MCwgMzY2IDQzOCIgc3Ryb2tlPSJ1cmwoI2xpbmVBKSIgc3Ryb2tlLXdpZHRoPSIyLjUiLz4KICAgIDxwYXRoIGQ9Ik02MzAgNjkwIEMgNTUwIDUyMCwgNDUwIDQ3MCwgMzg2IDQzOCIgc3Ryb2tlPSJ1cmwoI2xpbmVCKSIgc3Ryb2tlLXdpZHRoPSIyLjUiLz4KICA8L2c+CgogIDwhLS0g5Lqk5rGH5aSE55qE5LiA54K55YWJIC0tPgogIDxjaXJjbGUgY3g9IjM3NiIgY3k9IjQzNiIgcj0iMjYiIGZpbGw9IiNFMEYyRkUiIG9wYWNpdHk9Ii4xMiIvPgogIDxjaXJjbGUgY3g9IjM3NiIgY3k9IjQzNiIgcj0iNSIgZmlsbD0iI0YwRkRGQSIgb3BhY2l0eT0iLjkiLz4KCiAgPCEtLSDnqIDnlo/mmJ/ngrnvvIzlgZrmt7HnqbrotKjmhJ8gLS0+CiAgPGcgZmlsbD0iI0NCRDVFMSI+CiAgICA8Y2lyY2xlIGN4PSIxNTAiIGN5PSIxODAiIHI9IjEuNiIgb3BhY2l0eT0iLjUiLz48Y2lyY2xlIGN4PSI2MjAiIGN5PSIyMzAiIHI9IjEuMyIgb3BhY2l0eT0iLjQiLz4KICAgIDxjaXJjbGUgY3g9IjUzMCIgY3k9IjEyMCIgcj0iMS44IiBvcGFjaXR5PSIuNDUiLz48Y2lyY2xlIGN4PSIyMjAiIGN5PSIzMDAiIHI9IjEuMiIgb3BhY2l0eT0iLjM1Ii8+CiAgICA8Y2lyY2xlIGN4PSI2ODAiIGN5PSI1NjAiIHI9IjEuNSIgb3BhY2l0eT0iLjQiLz48Y2lyY2xlIGN4PSI5MCIgY3k9IjQ4MCIgcj0iMS40IiBvcGFjaXR5PSIuMzUiLz4KICAgIDxjaXJjbGUgY3g9IjQxMCIgY3k9IjE1MCIgcj0iMS4xIiBvcGFjaXR5PSIuMyIvPjxjaXJjbGUgY3g9IjMzMCIgY3k9Ijc0MCIgcj0iMS41IiBvcGFjaXR5PSIuMyIvPgogIDwvZz4KPC9zdmc+Cg==');
+  background-size: cover;
+  background-position: center top;
   pointer-events: none;
 }
 
-.blob--1 {
-  top: -120rpx;
-  right: -80rpx;
-  width: 420rpx;
-  height: 420rpx;
-  background: rgba(224, 90, 125, 0.18);
+/* 底部压暗，让表单区从背景里浮出来，避免光斑和输入框打架 */
+.vignette {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(180deg, rgba(7, 10, 18, 0) 30%, rgba(7, 10, 18, 0.82) 62%, $ink 82%);
+  pointer-events: none;
 }
 
-.blob--2 {
-  bottom: 60rpx;
-  left: -140rpx;
-  width: 380rpx;
-  height: 380rpx;
-  background: rgba(120, 150, 220, 0.14);
-}
-
-/* ── 品牌区 ── */
+/* ── 品牌 ── */
 .brand {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding-top: 168rpx;
-}
-
-.mark {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 132rpx;
-  height: 132rpx;
-  background: linear-gradient(140deg, #e8688a 0%, #d4436b 100%);
-  border-radius: 38rpx;
-  box-shadow: 0 16rpx 40rpx rgba(212, 67, 107, 0.32);
-}
-
-.mark-text {
-  color: #fff;
-  font-size: 62rpx;
-  font-weight: 600;
-  line-height: 1;
+  padding-top: 200rpx;
 }
 
 .name {
-  margin-top: 28rpx;
-  font-size: 46rpx;
+  font-size: 76rpx;
   font-weight: 600;
-  letter-spacing: 8rpx;
-  color: #2b2b33;
+  letter-spacing: 16rpx;
+  /* 首字缩进抵消字间距，否则视觉重心会偏左 */
+  text-indent: 16rpx;
+  color: $fg;
+}
+
+.name-en {
+  margin-top: 10rpx;
+  font-size: 20rpx;
+  letter-spacing: 10rpx;
+  text-indent: 10rpx;
+  color: rgba(232, 236, 244, 0.32);
 }
 
 .slogan {
-  margin-top: 12rpx;
+  margin-top: 28rpx;
   font-size: 26rpx;
-  color: rgba(43, 43, 51, 0.5);
-  letter-spacing: 1rpx;
+  letter-spacing: 2rpx;
+  color: rgba(232, 236, 244, 0.55);
 }
 
 /* ── 表单 ── */
 .form {
-  margin-top: 88rpx;
+  position: relative;
+  margin-top: 200rpx;
 }
 
+/* 玻璃拟态：半透明底 + 细边，深色下比实心块更透气 */
 .field {
   display: flex;
   align-items: center;
   height: 104rpx;
-  padding: 0 28rpx;
-  background: rgba(255, 255, 255, 0.85);
-  border: 1rpx solid rgba(43, 43, 51, 0.06);
-  border-radius: 52rpx;
-  box-shadow: 0 4rpx 16rpx rgba(43, 43, 51, 0.04);
+  padding: 0 32rpx;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1rpx solid rgba(255, 255, 255, 0.09);
+  border-radius: 20rpx;
 
   & + & {
-    margin-top: 24rpx;
+    margin-top: 20rpx;
   }
 }
 
@@ -273,69 +266,68 @@ function afterLogin(): void {
   flex: 1;
   min-width: 0;
   font-size: 30rpx;
-  color: #2b2b33;
+  color: $fg;
 }
 
 .ph {
-  color: rgba(43, 43, 51, 0.3);
+  color: rgba(232, 236, 244, 0.28);
 }
 
-/* 描边按钮：纯文字看不出可点，实心又会和主按钮抢 */
 .send {
   flex-shrink: 0;
-  padding: 12rpx 24rpx;
+  padding: 10rpx 22rpx;
   font-size: 24rpx;
-  color: $yq-primary;
-  border: 1rpx solid rgba(224, 90, 125, 0.4);
-  border-radius: 28rpx;
+  color: $teal;
+  background: rgba(94, 234, 212, 0.1);
+  border-radius: 14rpx;
 }
 
 .send--disabled {
-  color: rgba(43, 43, 51, 0.28);
-  border-color: rgba(43, 43, 51, 0.14);
+  color: rgba(232, 236, 244, 0.25);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .btn {
-  margin-top: 48rpx;
+  margin-top: 44rpx;
   height: 104rpx;
   line-height: 104rpx;
   font-size: 32rpx;
   font-weight: 500;
-  border-radius: 52rpx;
+  border-radius: 20rpx;
 
   &::after {
     border: none;
   }
 }
 
+/* 青→紫渐变呼应背景里那两条曲线，视觉上是同一套语言 */
 .btn--primary {
-  color: #fff;
-  background: linear-gradient(135deg, #e8688a 0%, #d4436b 100%);
-  box-shadow: 0 12rpx 28rpx rgba(212, 67, 107, 0.3);
+  color: $ink;
+  background: linear-gradient(100deg, $teal 0%, $indigo 100%);
+  box-shadow: 0 12rpx 36rpx rgba(94, 234, 212, 0.18);
 
-  /* 禁用用中性灰，不用淡粉：同色系的浅色看着像"能点但坏了"，
-     灰色才明确传达"还不能点" */
   &[disabled] {
-    color: rgba(43, 43, 51, 0.32);
-    background: rgba(43, 43, 51, 0.07);
+    color: rgba(232, 236, 244, 0.3);
+    background: rgba(255, 255, 255, 0.06);
     box-shadow: none;
   }
 }
 
 .btn--wx {
-  margin-top: 24rpx;
-  color: #07c160;
-  background: rgba(7, 193, 96, 0.08);
+  margin-top: 20rpx;
+  color: #6ee7a8;
+  background: rgba(110, 231, 168, 0.1);
 }
 
 .points {
   display: flex;
   align-items: center;
   justify-content: space-around;
-  margin-top: 72rpx;
-  padding: 36rpx 0;
-  background: rgba(255, 255, 255, 0.5);
-  border-radius: 24rpx;
+  margin-top: 64rpx;
+  padding: 34rpx 0;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1rpx solid rgba(255, 255, 255, 0.06);
+  border-radius: 20rpx;
 }
 
 .point {
@@ -347,31 +339,24 @@ function afterLogin(): void {
 .point-num {
   font-size: 34rpx;
   font-weight: 600;
-  color: $yq-primary;
+  color: $teal;
 }
 
 .point-label {
   margin-top: 8rpx;
   font-size: 22rpx;
-  color: rgba(43, 43, 51, 0.45);
+  color: rgba(232, 236, 244, 0.4);
 }
 
 .point-line {
   width: 1rpx;
-  height: 48rpx;
-  background: rgba(43, 43, 51, 0.08);
+  height: 44rpx;
+  background: rgba(255, 255, 255, 0.08);
 }
 
-.tip {
-  display: block;
-  margin-top: 28rpx;
-  font-size: 24rpx;
-  color: rgba(43, 43, 51, 0.38);
-  text-align: center;
-}
-
-/* ── 协议：推到底部安全区 ── */
+/* ── 协议 ── */
 .agree {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -386,27 +371,27 @@ function afterLogin(): void {
   width: 32rpx;
   height: 32rpx;
   margin-right: 12rpx;
-  border: 1rpx solid rgba(43, 43, 51, 0.25);
+  border: 1rpx solid rgba(232, 236, 244, 0.3);
   border-radius: 50%;
 }
 
 .checkbox--on {
-  background: $yq-primary;
-  border-color: $yq-primary;
+  background: $teal;
+  border-color: $teal;
 }
 
 .tick {
-  color: #fff;
+  color: $ink;
   font-size: 20rpx;
   line-height: 1;
 }
 
 .agree-text {
   font-size: 22rpx;
-  color: rgba(43, 43, 51, 0.45);
+  color: rgba(232, 236, 244, 0.38);
 }
 
 .link {
-  color: $yq-primary;
+  color: $teal;
 }
 </style>
