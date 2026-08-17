@@ -16,9 +16,9 @@ function open(id: string): void {
       <view v-else class="avatar avatar--empty">
         <text>{{ profile.displayName?.[0] || '?' }}</text>
       </view>
-      <!-- 打码是隐私分级的结果，明确告诉用户「有照片但看不到」比直接不显示好 -->
+      <!-- 有照片但没权限。说清楚是"不对外展示"而不是"这人没传照片" -->
       <view v-if="profile.avatarMasked" class="masked">
-        <text>照片已保护</text>
+        <text>照片保护</text>
       </view>
       <view v-if="score !== undefined" class="score">{{ score }}分</view>
     </view>

@@ -91,6 +91,18 @@ async function unlockContact(): Promise<void> {
   }
 }
 
+/** 照片和联系方式都走红娘，所以这里不引导开通会员，直接指向红娘 */
+function askMatchmaker(): void {
+  uni.showModal({
+    title: '照片不对外展示',
+    content: '为保护会员隐私，照片与联系方式不在小程序内公开。请联系你的专属红娘了解详情。',
+    confirmText: '去找红娘',
+    success: (r) => {
+      if (r.confirm) uni.switchTab({ url: '/pages/mine/index' });
+    },
+  });
+}
+
 function previewPhoto(url: string): void {
   uni.previewImage({ urls: photos.value.map((p) => p.url), current: url });
 }
@@ -113,11 +125,17 @@ function copy(text: string): void {
       <swiper v-if="photos.length" class="gallery" indicator-dots indicator-active-color="#e05a7d" circular>
         <swiper-item v-for="p in photos" :key="p.id">
           <image class="photo" :src="p.url" mode="aspectFill" @tap="previewPhoto(p.url)" />
-          <view v-if="p.masked" class="photo-mask">
-            <text>照片已模糊处理，解锁后可见清晰版</text>
-          </view>
         </swiper-item>
       </swiper>
+      <!--
+        两种"没图"要分开说：有照片但没权限 → 引导找红娘；
+        本来就没传 → 只显示首字母。混成一句话用户会以为是 bug。
+      -->
+      <view v-else-if="profile.photosLocked" class="gallery gallery--locked" @tap="askMatchmaker">
+        <text class="lock-icon">🔒</text>
+        <text class="lock-title">照片不对外展示</text>
+        <text class="lock-sub">想看 TA 的照片和联系方式，请联系你的专属红娘</text>
+      </view>
       <view v-else class="gallery gallery--empty">
         <text class="big">{{ profile.displayName?.[0] || '?' }}</text>
       </view>
@@ -233,6 +251,33 @@ function copy(text: string): void {
 </template>
 
 <style lang="scss" scoped>
+.gallery--locked {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(160deg, #fdeef2 0%, #eef2fb 100%);
+}
+
+.lock-icon {
+  font-size: 64rpx;
+}
+
+.lock-title {
+  margin-top: 16rpx;
+  font-size: 32rpx;
+  font-weight: 600;
+}
+
+.lock-sub {
+  margin-top: 10rpx;
+  padding: 0 60rpx;
+  font-size: 24rpx;
+  color: $yq-text-secondary;
+  text-align: center;
+  line-height: 1.6;
+}
+
 .gallery {
   width: 100%;
   height: 640rpx;

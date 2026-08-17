@@ -215,7 +215,10 @@ export interface ProfileDto {
   /** 联系方式 —— 默认锁死，VIP 解锁或牵线成功后才给 */
   phone: string | MaskedValue | null;
   wechat: string | MaskedValue | null;
+  /** 无权限时为空数组，配合 photosLocked 展示引导文案 */
   photos: PhotoDto[];
+  /** true = 有照片但你看不到，需联系红娘。区别于「这个人本来就没传照片」 */
+  photosLocked: boolean;
   preference: PreferenceDto | null;
   /** 扩展字段（EAV），key 是 fieldDef.code */
   extras: Record<string, unknown>;
@@ -243,6 +246,7 @@ export interface ProfileBriefDto {
   cityName: string | null;
   occupation: string | null;
   avatarUrl: string | null;
+  /** true = 有头像但你看不到，需联系红娘 */
   avatarMasked: boolean;
   isTop: boolean;
   status: ProfileStatus;

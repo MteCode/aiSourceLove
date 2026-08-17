@@ -26,7 +26,14 @@ import { FieldService } from '@/modules/field/field.service';
 import { BenefitService } from '@/modules/vip/benefit.service';
 
 /** 看原图（不打码）需要的等级。VIP 能看清晰照片是核心卖点之一。 */
-const PHOTO_ORIGINAL_LEVEL = VisibilityLevel.VIP;
+/**
+ * 照片可见门槛。
+ *
+ * 定在 MATCHMAKER 而不是 VIP：业务规则是照片和联系方式都不对外展示，
+ * 想看得联系红娘。这样连 VIP 和已解锁的人也看不到图——
+ * 相亲对象的照片外流一次就是不可挽回的事故，宁可保守。
+ */
+const PHOTO_ORIGINAL_LEVEL = VisibilityLevel.MATCHMAKER;
 
 /**
  * 字段可见等级的兜底表。
@@ -216,7 +223,9 @@ export class PrivacyService {
       introduction: profile.introduction,
       phone: gate('phone', profile.phone, maskPhone(profile.phone)),
       wechat: gate('wechat', profile.wechat, maskAccount(profile.wechat)),
-      photos: this.projectPhotos(profile.photos ?? [], showOriginalPhoto, viewer),
+      photos: showOriginalPhoto ? this.projectPhotos(profile.photos ?? [], true, viewer) : [],
+      // 有照片却看不到，和本来就没照片是两回事，前端要给的文案不一样
+      photosLocked: !showOriginalPhoto && (profile.photos?.length ?? 0) > 0,
       preference: profile.preference
         ? {
             ageMin: profile.preference.ageMin,
@@ -255,11 +264,12 @@ export class PrivacyService {
       .filter((p) => p.auditStatus === 'APPROVED' || viewer.isSelf || viewer.isMatchmakerOf || viewer.isAdmin)
       .sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary) || a.sort - b.sort)
       .map((p) => {
-        const useOriginal = showOriginal || !p.maskedUrl;
         return {
           id: p.id,
-          url: this.storage.toAbsoluteUrl(useOriginal ? p.url : p.maskedUrl) ?? '',
-          masked: !useOriginal,
+          // 没权限就不给任何图。原来这里是"没有打码版就回退给原图"，
+          // 那是把"缺数据"当成了"可放行"，方向正好反了。
+          url: showOriginal ? this.storage.toAbsoluteUrl(p.url) ?? '' : '',
+          masked: !showOriginal,
           isPrimary: p.isPrimary,
           auditStatus: p.auditStatus as PhotoDto['auditStatus'],
           sort: p.sort,
@@ -276,7 +286,6 @@ export class PrivacyService {
       profile.photos?.find((p) => p.isPrimary && p.auditStatus === 'APPROVED') ??
       profile.photos?.find((p) => p.auditStatus === 'APPROVED');
     const showOriginal = viewerLevel >= PHOTO_ORIGINAL_LEVEL;
-    const useOriginal = showOriginal || !primary?.maskedUrl;
 
     return {
       id: profile.id,
@@ -289,10 +298,10 @@ export class PrivacyService {
       education: profile.education as ProfileBriefDto['education'],
       cityName: profile.cityName,
       occupation: profile.occupation,
-      avatarUrl: primary
-        ? this.storage.toAbsoluteUrl(useOriginal ? primary.url : primary.maskedUrl)
-        : null,
-      avatarMasked: !!primary && !useOriginal,
+      // 没权限一律不给图；有照片但看不到时置 avatarMasked，
+      // 前端据此显示"照片需联系红娘"，而不是显示成这个人没传照片
+      avatarUrl: primary && showOriginal ? this.storage.toAbsoluteUrl(primary.url) : null,
+      avatarMasked: !!primary && !showOriginal,
       isTop: profile.isTop && (!profile.topExpireAt || profile.topExpireAt > new Date()),
       status: profile.status as ProfileBriefDto['status'],
     };
