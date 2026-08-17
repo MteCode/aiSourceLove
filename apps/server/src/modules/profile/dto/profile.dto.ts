@@ -252,6 +252,6 @@ export class QueryProfileDto extends PaginationDto {
 
 export class ClaimProfileDto {
   @ApiProperty({ description: '要认领的档案编号，如 YQ26081000001' })
-  @IsString() @IsNotEmpty()
-  serialNo!: string;
+  @IsString() @IsOptional()
+  serialNo?: string;
 }

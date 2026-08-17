@@ -208,11 +208,69 @@ export class ProfileService {
   }
 
   /** 用户用编号认领红娘代录的档案 */
-  async claim(userId: string, serialNo: string): Promise<ProfileDto> {
-    const profile = await this.prisma.profile.findFirst({
-      where: { serialNo, deletedAt: null },
+  /**
+   * 查一下有没有能凭手机号自动认领的档案。
+   *
+   * 红娘代录时会填客户的手机号，客户用同一个号注册，这份档案本来就是他的。
+   * 让他再去问红娘要一串 YQ 开头的编号，是把系统的内部标识甩给用户记。
+   *
+   * 手机号能作为凭据是因为注册那一步走过短信验证——等于已经自证了所有权。
+   */
+  async findClaimableByPhone(viewer: AuthUser): Promise<ProfileDto | null> {
+    const userId = viewer.userId;
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { phone: true },
     });
-    if (!profile) throw new NotFoundException('档案编号不存在');
+    if (!user?.phone) return null;
+
+    // 已有档案就不用认领了
+    const mine = await this.prisma.profile.findFirst({
+      where: { userId, deletedAt: null },
+      select: { id: true },
+    });
+    if (mine) return null;
+
+    const hit = await this.prisma.profile.findFirst({
+      where: { phone: user.phone, userId: null, deletedAt: null },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true },
+    });
+    if (!hit) return null;
+
+    // 传真实 viewer。上一次在 upsertPreference 里用 `as AuthUser` 造过一个
+    // 只有两个字段的对象，resolveViewer 读 roles.includes 直接 500——同一个坑不踩第二次。
+    return this.toDto(hit.id, viewer);
+  }
+
+  /**
+   * 认领档案。
+   *
+   * serialNo 可以不传：不传就按注册手机号匹配一份无主档案。
+   * 编号是给「红娘线下登记时留了别人的手机号」这类情况兜底的。
+   */
+  async claim(userId: string, serialNo: string | undefined, viewer: AuthUser): Promise<ProfileDto> {
+    let profile;
+    if (serialNo?.trim()) {
+      profile = await this.prisma.profile.findFirst({
+        where: { serialNo: serialNo.trim(), deletedAt: null },
+      });
+      if (!profile) throw new NotFoundException('档案编号不存在');
+    } else {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { phone: true },
+      });
+      profile = user?.phone
+        ? await this.prisma.profile.findFirst({
+            where: { phone: user.phone, userId: null, deletedAt: null },
+            orderBy: { createdAt: 'asc' },
+          })
+        : null;
+      if (!profile) {
+        throw new BizException('没有找到和你手机号对应的档案，请向红娘要一下档案编号', 40913);
+      }
+    }
     if (profile.userId) {
       throw new BizException(
         profile.userId === userId ? '这份档案已经是你的了' : '该档案已被其他账号认领',
@@ -226,8 +284,11 @@ export class ProfileService {
     if (mine) throw new BizException(`你已有档案（${mine.serialNo}），不能重复认领`, 40912);
 
     await this.prisma.profile.update({ where: { id: profile.id }, data: { userId } });
-    this.logger.log(`用户 ${userId} 认领了档案 ${serialNo}`);
-    return this.toDto(profile.id, null);
+    // 上下文缓存里 profileId 还是 null，不清的话接下来 60 秒都以为这人没档案
+    await this.userContext.invalidate(userId);
+    this.logger.log(`用户 ${userId} 认领了档案 ${profile.serialNo}${serialNo ? '' : '（手机号自动匹配）'}`);
+    // viewer 传自己：认领来的档案多半还没过审，传 null 会走匿名投影而判成不可见
+    return this.toDto(profile.id, { ...viewer, profileId: profile.id });
   }
 
   // ═══════ 建 / 改 ═══════

@@ -85,11 +85,20 @@ export class ProfileController {
     return this.profile.toDto(user.profileId, user);
   }
 
+  @Get('me/claimable')
+  @ApiOperation({
+    summary: '按手机号查可认领的档案',
+    description: '红娘代录时填了客户手机号，客户用同一个号注册就能一键认领，不用记编号。',
+  })
+  claimable(@CurrentUser() user: AuthUser) {
+    return this.profile.findClaimableByPhone(user);
+  }
+
   @Post('me/claim')
   @LogAction('会员档案', '认领档案')
   @ApiOperation({ summary: '用编号认领红娘代录的档案' })
-  claim(@CurrentUser('userId') userId: string, @Body() dto: ClaimProfileDto) {
-    return this.profile.claim(userId, dto.serialNo);
+  claim(@CurrentUser() user: AuthUser, @Body() dto: ClaimProfileDto) {
+    return this.profile.claim(user.userId, dto.serialNo, user);
   }
 
   @Get('me/audit-logs')
