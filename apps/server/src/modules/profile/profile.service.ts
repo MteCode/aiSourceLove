@@ -458,8 +458,15 @@ export class ProfileService {
     if (!profile) throw new NotFoundException('档案不存在');
 
     const from = profile.status as ProfileStatus;
-    // 非法流转直接抛错，不会静默写库
-    assertTransition(PROFILE_STATUS_TRANSITIONS, from, target, '档案状态');
+    // 非法流转直接抛错，不会静默写库。
+    // 转成 BizException：assertTransition 抛的是普通 Error，会被兜底过滤器
+    // 当成 500 服务器错误——但「草稿不能直接置为通过」是调用方用错了，
+    // 该给 400 和一句人能看懂的话，而不是让运营以为系统崩了。
+    try {
+      assertTransition(PROFILE_STATUS_TRANSITIONS, from, target, '档案状态');
+    } catch (e) {
+      throw new BizException((e as Error).message, 40033);
+    }
 
     if (target === ProfileStatus.REJECTED && !opts.reason?.trim()) {
       throw new BizException('驳回必须填写理由，否则用户不知道要改什么', 40031);
@@ -497,12 +504,19 @@ export class ProfileService {
     });
     if (!profile) throw new NotFoundException('档案不存在');
 
-    // 提审前做完整性检查，别让审核员收到一堆残缺资料
+    // 提审前做完整性检查，别让审核员收到一堆残缺资料。
+    //
+    // 必填项从字段字典读，不写死：真实姓名被停用后这里仍然要求它，
+    // 结果是字段填不了、档案也永远提交不了——写死的校验和可配的表单
+    // 迟早会对不上，只能让校验跟着配置走。
+    const required = (await this.field.getEnabledFields()).filter((f) => f.required && f.isCore);
+    const record = profile as unknown as Record<string, unknown>;
     const missing: string[] = [];
-    if (!profile.realName?.trim()) missing.push('真实姓名');
-    if (!profile.cityCode) missing.push('所在城市');
-    if (!profile.education) missing.push('学历');
-    if (!profile.phone?.trim()) missing.push('手机号');
+    for (const f of required) {
+      const v = record[f.code];
+      if (v == null || (typeof v === 'string' && !v.trim())) missing.push(f.label);
+    }
+    // 照片不是字典里的列，单独判。红娘要看人，没照片撮合不了
     if (!profile.photos.length) missing.push('至少一张照片');
     if (missing.length) {
       throw new BizException(`资料不完整，请先补充：${missing.join('、')}`, 40032);

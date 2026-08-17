@@ -962,8 +962,13 @@ model BenefitGrant {
   /// 权益到期时间 = 支付时间 + 套餐天数
   expireAt DateTime
 
+  /// 购买而来的挂订单；后台手动发放的没有订单，为 null
   orderId String?
   order   Order?  @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  /// 发放来源与备注。手动发放时记「谁发的、为什么发」，
+  /// 不然一年后看到某人有权益却查不到出处
+  grantNote String? @db.VarChar(200)
 
   createdAt DateTime @default(now())
 

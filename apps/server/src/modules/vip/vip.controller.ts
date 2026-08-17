@@ -14,6 +14,7 @@ import {
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { PayChannel, UserBenefitDto, VipPackageDto } from '@yuanqiao/shared';
+import type { AuthUser } from '@/common/types/auth-user';
 import { ClientIp, CurrentUser, LogAction, Public, RequirePermissions } from '@/common/decorators';
 import { BenefitService } from './benefit.service';
 import { OrderService } from './order.service';
@@ -73,6 +74,20 @@ export class VipController {
   @ApiOperation({ summary: '删除套餐（有订单则自动改为下架）' })
   removePackage(@Param('id') id: string) {
     return this.pkg.remove(id);
+  }
+
+  @Post('grant')
+  @RequirePermissions('vip:manage')
+  @LogAction('交易管理', '后台开通 VIP')
+  @ApiOperation({
+    summary: '后台给用户开通 VIP',
+    description: '支付未上线时的口子：线下收款、样板号、早期用户补偿都走这里。走和支付成功相同的发放路径。',
+  })
+  grant(
+    @Body() dto: { userId: string; packageId: string; remark?: string },
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.benefit.grantByAdmin({ ...dto, operatorId: user.userId });
   }
 
   @Get('benefits')

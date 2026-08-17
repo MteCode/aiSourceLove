@@ -15,6 +15,11 @@ export interface VipPackageInput {
 }
 
 export const vipApi = {
+  /** 后台给用户开通 VIP。支付未上线时的口子，走和支付成功相同的发放路径 */
+  grant(body: { userId: string; packageId: string; remark?: string }) {
+    return request.post<{ expireAt: string; benefits: number }>('/vip/grant', body);
+  },
+
   /** 后台要看到已下架的，所以走 all */
   all() {
     return request.get<VipPackageDto[]>('/vip/packages/all');

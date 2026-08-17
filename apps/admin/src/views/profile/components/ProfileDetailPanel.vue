@@ -16,6 +16,18 @@
           <div class="text-muted">
             归属红娘：{{ profile.matchmakerName ?? '未分配' }} · 注册于 {{ formatDay(profile.createdAt) }}
           </div>
+          <!-- 支付没上线，AI 匹配这类权益只能从这儿发 -->
+          <el-button
+            v-perm="'vip:manage'"
+            size="small"
+            type="warning"
+            plain
+            :disabled="!profile.userId"
+            class="grant-btn"
+            @click="openGrant"
+          >
+            {{ profile.userId ? '开通 VIP / 发放权益' : '未关联账号，无法开通' }}
+          </el-button>
         </div>
       </div>
 
@@ -139,6 +151,34 @@
         <div v-else class="text-muted">暂无审核记录</div>
       </div>
     </template>
+
+    <el-dialog v-model="grantVisible" title="开通 VIP" width="420px">
+      <el-form label-width="80px">
+        <el-form-item label="套餐">
+          <el-select v-model="grantPkgId" placeholder="选择套餐" style="width: 100%">
+            <el-option
+              v-for="p in packages"
+              :key="p.id"
+              :value="p.id"
+              :label="`${p.name}（${p.durationDays} 天）`"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model="grantRemark" placeholder="为什么给这个人开，便于日后追溯" maxlength="50" />
+        </el-form-item>
+      </el-form>
+      <div class="text-muted grant-tip">
+        走的是和支付成功完全相同的发放路径，权益条目和有效期按套餐配置来。
+        未到期的会往后续，不会把剩余天数抹掉。
+      </div>
+      <template #footer>
+        <el-button @click="grantVisible = false">取消</el-button>
+        <el-button type="primary" :loading="granting" :disabled="!grantPkgId" @click="doGrant">
+          确认开通
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -155,8 +195,9 @@ import {
   VISIBILITY_LABEL,
   type AuditLogDto,
   type ProfileDto,
+  type VipPackageDto,
 } from '@yuanqiao/shared';
-import { profileApi } from '@/api';
+import { profileApi, vipApi } from '@/api';
 import DictTag from '@/components/DictTag.vue';
 import MaskedText from '@/components/MaskedText.vue';
 import { useUserStore } from '@/stores';
@@ -205,6 +246,37 @@ async function saveName(): Promise<void> {
   }
 }
 
+const grantVisible = ref(false);
+const granting = ref(false);
+const grantPkgId = ref('');
+const grantRemark = ref('');
+const packages = ref<VipPackageDto[]>([]);
+
+async function openGrant(): Promise<void> {
+  if (!packages.value.length) packages.value = await vipApi.all();
+  grantPkgId.value = packages.value[0]?.id ?? '';
+  grantVisible.value = true;
+}
+
+async function doGrant(): Promise<void> {
+  const userId = profile.value?.userId;
+  if (!userId) return;
+  granting.value = true;
+  try {
+    const r = await vipApi.grant({
+      userId,
+      packageId: grantPkgId.value,
+      remark: grantRemark.value || undefined,
+    });
+    ElMessage.success(`已开通，到期 ${formatDay(r.expireAt)}，发放 ${r.benefits} 项权益`);
+    grantVisible.value = false;
+    grantRemark.value = '';
+    await load();
+  } finally {
+    granting.value = false;
+  }
+}
+
 async function load(): Promise<void> {
   loading.value = true;
   try {
@@ -241,6 +313,15 @@ defineExpose({ reload: load, profile });
 </script>
 
 <style scoped>
+.grant-btn {
+  margin-top: 8px;
+}
+
+.grant-tip {
+  font-size: 12px;
+  line-height: 1.6;
+}
+
 .detail {
   min-height: 200px;
 }

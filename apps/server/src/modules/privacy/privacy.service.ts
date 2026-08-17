@@ -232,6 +232,7 @@ export class PrivacyService {
       wechat: gate('wechat', profile.wechat, maskAccount(profile.wechat)),
       photos: showOriginalPhoto ? this.projectPhotos(profile.photos ?? [], true, viewer) : [],
       // 有照片却看不到，和本来就没照片是两回事，前端要给的文案不一样
+      userId: profile.userId ?? null,
       photosLocked: !showOriginalPhoto && (profile.photos?.length ?? 0) > 0,
       birthdayPrecision: (profile.birthdayPrecision as 'DAY' | 'YEAR') ?? 'DAY',
       preference: profile.preference

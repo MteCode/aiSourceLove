@@ -94,9 +94,9 @@ type FieldSeed = {
 
 const FIELDS: FieldSeed[] = [
   // ── 基本信息（isCore=映射 Profile 固定列）──
-  // 真实姓名停用：业务上姓名不展示也不由会员自填，红娘线下核实时自己录。
-  // 用 enabled 关而不是删掉这条——留着字段定义，运营在后台点一下就能开回来。
-  { code: 'realName', label: '真实姓名', type: 'TEXT', group: 'basic', visibility: 4, isCore: true, required: false, enabled: false, sort: 1, maxLength: 20, helpText: '仅红娘可见' },
+  // 真实姓名：会员**要填**，但只有红娘和管理员看得到（visibility 4），
+  // 其他会员在详情页上根本没有这一栏。"不展示"和"不能填"是两回事。
+  { code: 'realName', label: '真实姓名', type: 'TEXT', group: 'basic', visibility: 4, isCore: true, required: true, sort: 1, maxLength: 20, helpText: '仅红娘可见，不对其他会员展示' },
   { code: 'nickname', label: '昵称', type: 'TEXT', group: 'basic', visibility: 0, isCore: true, sort: 2, maxLength: 20 },
   { code: 'gender', label: '性别', type: 'SELECT', group: 'basic', visibility: 0, isCore: true, required: true, sort: 3, options: [{ value: 'MALE', label: '男' }, { value: 'FEMALE', label: '女' }] },
   { code: 'birthday', label: '出生日期', type: 'DATE', group: 'basic', visibility: 1, isCore: true, required: true, sort: 4, helpText: '列表展示年龄' },

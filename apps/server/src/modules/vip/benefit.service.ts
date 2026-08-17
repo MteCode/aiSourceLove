@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { BenefitCode as PrismaBenefitCode, Prisma, ResetCycle as PrismaResetCycle } from '@prisma/client';
 import {
   BENEFIT_META,
@@ -12,6 +12,7 @@ import {
 } from '@yuanqiao/shared';
 import { BenefitExhaustedException } from '@/common/filters/all-exceptions.filter';
 import { PrismaService } from '@/infra/prisma/prisma.service';
+import { UserContextService } from '@/modules/auth/user-context.service';
 
 /**
  * 权益核销引擎（模块5 的核心）。
@@ -25,7 +26,10 @@ import { PrismaService } from '@/infra/prisma/prisma.service';
 export class BenefitService {
   private readonly logger = new Logger(BenefitService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly userContext: UserContextService,
+  ) {}
 
   /** 当前周期的 key：DAILY→2026-08-10，MONTHLY→2026-08，NONE→ALL */
   periodKey(cycle: ResetCycle, at = new Date()): string {
@@ -169,10 +173,12 @@ export class BenefitService {
     userId: string;
     benefits: BenefitSpec[];
     durationDays: number;
-    orderId: string;
+    /** 购买传订单 id；后台手动发放传 null——orderId 是外键，编一个字符串会违反约束 */
+    orderId: string | null;
+    grantNote?: string;
     tx: Prisma.TransactionClient;
   }): Promise<void> {
-    const { userId, benefits, durationDays, orderId, tx } = params;
+    const { userId, benefits, durationDays, orderId, grantNote, tx } = params;
     const expireAt = new Date(Date.now() + durationDays * 86400 * 1000);
 
     if (!benefits.length) {
@@ -188,6 +194,7 @@ export class BenefitService {
         cycle: (b.cycle ?? BENEFIT_META[b.code].defaultCycle) as PrismaResetCycle,
         expireAt,
         orderId,
+        grantNote: grantNote ?? null,
       })),
     });
 
@@ -243,4 +250,59 @@ export class BenefitService {
     }
     return out;
   }
+  /**
+   * 后台手动给用户开通 VIP。
+   *
+   * 存在的意义：支付还没上线，但业务上已经需要给特定用户放开 AI 匹配、
+   * 解锁次数这些权益——线下收了钱、给红娘的样板号、给早期用户的补偿，
+   * 都得有个口子。
+   *
+   * 走和支付成功完全相同的发放路径（grantFromPackage），不另写一套：
+   * 权益条目、有效期、按日/按月重置这些规则只应该有一处实现。
+   * 区别只是 orderId 记成 manual:xxx，对账时能认出来这不是真实收款。
+   */
+  async grantByAdmin(params: {
+    userId: string;
+    packageId: string;
+    operatorId: string;
+    remark?: string;
+  }): Promise<{ expireAt: Date; benefits: number }> {
+    const pkg = await this.prisma.vipPackage.findUnique({ where: { id: params.packageId } });
+    if (!pkg) throw new NotFoundException('套餐不存在');
+
+    const user = await this.prisma.user.findFirst({
+      where: { id: params.userId, deletedAt: null },
+      select: { id: true, vipExpireAt: true },
+    });
+    if (!user) throw new NotFoundException('用户不存在');
+
+    const benefits = (pkg.benefits ?? []) as unknown as BenefitSpec[];
+    const now = new Date();
+    // 还没到期就往后续，不要把剩余天数抹掉
+    const base = user.vipExpireAt && user.vipExpireAt > now ? user.vipExpireAt : now;
+    const expireAt = new Date(base.getTime() + pkg.durationDays * 86400 * 1000);
+
+    await this.prisma.$transaction(async (tx) => {
+      await this.grantFromPackage({
+        userId: params.userId,
+        benefits,
+        durationDays: pkg.durationDays,
+        // 手动发放不挂订单：orderId 是指向 Order 表的外键，
+        // 编一个 manual:xxx 会直接违反外键约束
+        orderId: null,
+        grantNote: `后台开通 · 操作人 ${params.operatorId}${params.remark ? ` · ${params.remark}` : ''}`,
+        tx,
+      });
+      await tx.user.update({
+        where: { id: params.userId },
+        data: { isVip: true, vipExpireAt: expireAt },
+      });
+    });
+
+    // 鉴权上下文里缓存着 isVip，不清的话用户 60 秒内还是非 VIP
+    await this.userContext.invalidate(params.userId);
+    this.logger.log(`后台开通 VIP：user=${params.userId} 套餐=${pkg.name} 到期=${expireAt.toISOString()}`);
+    return { expireAt, benefits: benefits.length };
+  }
+
 }

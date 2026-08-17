@@ -1,4 +1,5 @@
 import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
 import {
   BenefitCode,
@@ -15,6 +16,7 @@ import {
 } from '@yuanqiao/shared';
 import { buildPageResult } from '@/common/dto/pagination.dto';
 import type { AuthUser } from '@/common/types/auth-user';
+import type { AppConfig } from '@/config/configuration';
 import { PrismaService } from '@/infra/prisma/prisma.service';
 import { AiService } from '@/infra/ai/ai.service';
 import { PrivacyService } from '@/modules/privacy/privacy.service';
@@ -50,6 +52,7 @@ export class MatchService {
     private readonly ai: AiService,
     private readonly privacy: PrivacyService,
     private readonly benefit: BenefitService,
+    private readonly config: ConfigService<AppConfig, true>,
   ) {}
 
   /**
