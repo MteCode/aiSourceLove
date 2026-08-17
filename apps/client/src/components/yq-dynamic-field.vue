@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import type { FieldDefDto } from '@yuanqiao/shared';
+import { loadRegionTree, type RegionNode } from '@/utils/region';
 
 /**
  * 动态表单的单个字段。
@@ -12,6 +13,72 @@ const props = defineProps<{ field: FieldDefDto; modelValue: unknown }>();
 const emit = defineEmits<{ 'update:modelValue': [v: unknown] }>();
 
 const options = computed(() => props.field.options ?? []);
+
+// ───────── 行政区划 ─────────
+
+const regionTree = ref<RegionNode[]>([]);
+/** 三列各自选中的下标 */
+const regionIndex = ref<number[]>([0, 0, 0]);
+
+/**
+ * 区划树只在真的有 REGION 字段时才拉，而且整个表单共用一次缓存——
+ * 常住城市和籍贯都是 REGION，各拉一次是浪费。
+ */
+onMounted(async () => {
+  if (props.field.type !== 'REGION') return;
+  regionTree.value = (await loadRegionTree()) as RegionNode[];
+  syncIndexFromValue();
+});
+
+const provinces = computed(() => regionTree.value);
+const cities = computed(() => provinces.value[regionIndex.value[0]]?.children ?? []);
+const districts = computed(() => cities.value[regionIndex.value[1]]?.children ?? []);
+
+// 区县这一列可能为空（直辖市、或者数据只到市），空数组会让 picker 那一列不可用，
+// 给个占位项，用户至少知道"这里没有更细的了"
+const regionRange = computed(() => [
+  provinces.value,
+  cities.value,
+  districts.value.length ? districts.value : [{ value: '', label: '不限' }],
+]);
+
+const regionText = computed(() => {
+  const p = provinces.value[regionIndex.value[0]];
+  const c = cities.value[regionIndex.value[1]];
+  const d = districts.value[regionIndex.value[2]];
+  return [p?.label, c?.label, d?.label].filter(Boolean).join(' ');
+});
+
+/** 已有值时把三列下标还原出来，否则重新进页面选过的会丢 */
+function syncIndexFromValue(): void {
+  const code = props.modelValue as string | undefined;
+  if (!code) return;
+  for (let i = 0; i < provinces.value.length; i++) {
+    const cs = provinces.value[i].children ?? [];
+    for (let j = 0; j < cs.length; j++) {
+      if (cs[j].value === code) { regionIndex.value = [i, j, 0]; return; }
+      const ds = cs[j].children ?? [];
+      const k = ds.findIndex((d) => d.value === code);
+      if (k >= 0) { regionIndex.value = [i, j, k]; return; }
+    }
+  }
+}
+
+/** 改省要把市、区归零，否则会出现"河北省 + 上海市"这种组合 */
+function onRegionColumn(e: { detail: { column: number; value: number } }): void {
+  const idx = [...regionIndex.value];
+  idx[e.detail.column] = e.detail.value;
+  if (e.detail.column === 0) { idx[1] = 0; idx[2] = 0; }
+  if (e.detail.column === 1) idx[2] = 0;
+  regionIndex.value = idx;
+}
+
+/** 回传最细一级的 code：选到区就传区，只选到市就传市 */
+function onRegionChange(): void {
+  const d = districts.value[regionIndex.value[2]];
+  const c = cities.value[regionIndex.value[1]];
+  emit('update:modelValue', d?.value || c?.value || '');
+}
 
 /** picker 是按下标回传的，要把值翻译成下标 */
 const selectIndex = computed(() => {
@@ -192,6 +259,26 @@ function goto(url: string): void {
       <text class="placeholder">去照片管理页上传</text>
       <text class="arrow">›</text>
     </view>
+
+    <!--
+      行政区划：三级联动。
+      没有这个分支的话 REGION 类型会掉进最后的兜底 input，
+      变成一个让用户手打区划代码的空框——而常住城市还是必填项。
+    -->
+    <picker
+      v-else-if="field.type === 'REGION'"
+      mode="multiSelector"
+      :range="regionRange"
+      range-key="label"
+      :value="regionIndex"
+      @columnchange="onRegionColumn"
+      @change="onRegionChange"
+    >
+      <view class="control control--picker">
+        <text :class="{ placeholder: !regionText }">{{ regionText || '请选择地区' }}</text>
+        <text class="arrow">›</text>
+      </view>
+    </picker>
 
     <!-- 兜底：出现没适配的类型时不至于整页白掉 -->
     <input v-else class="control" :value="(modelValue as string) ?? ''" :placeholder="field.placeholder || ''" placeholder-class="ph" @input="onInput" />
