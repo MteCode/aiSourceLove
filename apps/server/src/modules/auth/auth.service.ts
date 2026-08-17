@@ -45,12 +45,16 @@ export class AuthService {
       throw new BizException(`发送太频繁，请 ${wait} 秒后再试`, 42901);
     }
     // 同一手机号每天上限，防刷短信费
-    const dayCount = await this.redis.incr(`sms:count:${phone}`, 24 * 3600);
-    if (dayCount > 10) {
-      throw new BizException('今日验证码发送次数已达上限', 42902);
-    }
-
     const smsCfg = this.config.get('sms', { infer: true });
+
+    // 每日次数上限是防短信费用和轰炸的，mock 通道两样都不涉及。
+    // 开着只会在联调时把自己挡在门外——测试反复登录很容易撞上 10 次。
+    if (smsCfg.provider !== 'mock') {
+      const dayCount = await this.redis.incr(`sms:count:${phone}`, 24 * 3600);
+      if (dayCount > 10) {
+        throw new BizException('今日验证码发送次数已达上限', 42902);
+      }
+    }
     const code =
       smsCfg.provider === 'mock'
         ? smsCfg.mockCode

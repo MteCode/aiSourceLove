@@ -107,19 +107,26 @@ export const useUserStore = defineStore('user', () => {
    * 只看 logged 会把「token 有效但还没恢复完」误判成未登录，
    * 把人一路弹回登录页——用户看到的现象是"明明注册成功了却进不去"。
    */
+  /**
+   * 页面守卫。判定以**票据**为准，不以内存里的用户信息为准。
+   *
+   * 原来用 logged（= 有票据 && 有用户信息）。用户信息要异步拉，
+   * 于是"刚登录完、user 还没落到这个页面能看到的状态"就被判成未登录，
+   * 一路弹回登录页——现象是"登录成功了却进不去"，而且时序敏感、时好时坏。
+   *
+   * 票据无效的情况不需要在这里判：restore() 拉不到 me 会 reset() 清票据，
+   * 请求层遇到 401 也会清并跳登录。让那两条路径去处理，守卫只管放行。
+   */
   async function requireLogin(): Promise<boolean> {
-    if (logged.value) return true;
-
-    // 有票据就去恢复，不看 ready。
-    //
-    // 之前这里加了 !ready.value 的前提，是个 bug：restore() 在应用启动时
-    // 跑过一次（那会儿还没 token，直接置 ready=true），之后再拿到 token，
-    // ready 仍是 true，这个补救分支就永远进不去，用户被一路弹回登录页。
-    // restore() 内部有 inflight 去重，重复调用不会打多余的 /auth/me。
-    if (tokenStore.access) {
-      await restore();
-      if (logged.value) return true;
+    if (!tokenStore.access) {
+      redirectTo('/pages/login/index');
+      return false;
     }
+
+    // 有票据但还没拿到用户信息，补一次；失败会清票据
+    if (!user.value) await restore();
+
+    if (tokenStore.access) return true;
 
     redirectTo('/pages/login/index');
     return false;
