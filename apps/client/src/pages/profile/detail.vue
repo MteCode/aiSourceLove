@@ -6,6 +6,7 @@ import {
   CHILDREN_LABEL,
   EDUCATION_LABEL,
   GENDER_LABEL,
+  zodiacOf,
   HOUSE_LABEL,
   MARITAL_LABEL,
   type ProfileDto,
@@ -30,6 +31,8 @@ const profile = ref<ProfileDto | null>(null);
 const failed = ref('');
 
 const photos = computed(() => profile.value?.photos ?? []);
+/** 照片不展示，头像位用生肖——只需要出生年，正好是我们唯一可信的那部分生日 */
+const zodiac = computed(() => zodiacOf(profile.value ? new Date(profile.value.birthday as string).getFullYear() : null));
 
 /**
  * 老库导入的档案只有出生年，月日是补的 1 月 1 日。
@@ -117,8 +120,10 @@ function previewPhoto(url: string): void {
         <text class="lock-title">照片不对外展示</text>
         <text class="lock-sub">想看 TA 的照片和联系方式，请联系你的专属红娘</text>
       </view>
+      <!-- 本来就没传照片：和卡片一样用生肖顶上，别显示编号首字母 -->
       <view v-else class="gallery gallery--empty">
-        <text class="big">{{ profile.displayName?.[0] || '?' }}</text>
+        <text class="big">{{ zodiac?.emoji ?? '🙂' }}</text>
+        <text v-if="zodiac" class="big-label">属{{ zodiac.label }}</text>
       </view>
 
       <!-- 概要 -->
@@ -238,6 +243,12 @@ function previewPhoto(url: string): void {
 .gallery {
   width: 100%;
   height: 640rpx;
+}
+
+.big-label {
+  margin-top: 8rpx;
+  font-size: 26rpx;
+  color: $yq-text-secondary;
 }
 
 .gallery--empty {

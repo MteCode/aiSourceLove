@@ -295,6 +295,9 @@ export class PrivacyService {
         profile.nickname || (profile.realName ? maskName(profile.realName) : profile.serialNo),
       gender: profile.gender as ProfileBriefDto['gender'],
       age: calcAge(profile.birthday),
+      // 出生年单独下发：照片不展示时前端拿它算生肖当头像，
+      // 用 age 倒推会差一岁（今年生日没过的人）
+      birthYear: profile.birthday.getFullYear(),
       heightCm: profile.heightCm,
       education: profile.education as ProfileBriefDto['education'],
       cityName: profile.cityName,
