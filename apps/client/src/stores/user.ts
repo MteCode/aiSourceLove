@@ -110,8 +110,13 @@ export const useUserStore = defineStore('user', () => {
   async function requireLogin(): Promise<boolean> {
     if (logged.value) return true;
 
-    // 有票据就先等恢复跑完再下结论
-    if (tokenStore.access && !ready.value) {
+    // 有票据就去恢复，不看 ready。
+    //
+    // 之前这里加了 !ready.value 的前提，是个 bug：restore() 在应用启动时
+    // 跑过一次（那会儿还没 token，直接置 ready=true），之后再拿到 token，
+    // ready 仍是 true，这个补救分支就永远进不去，用户被一路弹回登录页。
+    // restore() 内部有 inflight 去重，重复调用不会打多余的 /auth/me。
+    if (tokenStore.access) {
       await restore();
       if (logged.value) return true;
     }
