@@ -58,8 +58,8 @@ export class ProfileController {
   @Put('me')
   @LogAction('会员档案', '填写/修改自己的档案')
   @ApiOperation({ summary: '创建或更新我的档案（改关键字段会自动重新送审）' })
-  upsertMe(@CurrentUser('userId') userId: string, @Body() dto: UpsertProfileDto) {
-    return this.profile.upsertSelf(userId, dto);
+  upsertMe(@CurrentUser() user: AuthUser, @Body() dto: UpsertProfileDto) {
+    return this.profile.upsertSelf(user.userId, dto, user);
   }
 
   @Post('me/submit')
@@ -232,6 +232,7 @@ export class AdminProfileController {
     return this.profile.createByMatchmaker(mmId, dto, {
       id: user.userId,
       name: user.nickname ?? user.phone,
+      viewer: user,
     });
   }
 

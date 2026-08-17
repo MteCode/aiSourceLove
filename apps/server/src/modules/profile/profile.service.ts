@@ -18,6 +18,7 @@ import { BizException } from '@/common/filters/all-exceptions.filter';
 import { buildPageResult } from '@/common/dto/pagination.dto';
 import type { AuthUser } from '@/common/types/auth-user';
 import { PrismaService } from '@/infra/prisma/prisma.service';
+import { UserContextService } from '@/modules/auth/user-context.service';
 import { StorageService } from '@/infra/storage/storage.service';
 import { FieldService } from '@/modules/field/field.service';
 import { PrivacyService } from '@/modules/privacy/privacy.service';
@@ -56,11 +57,19 @@ export class ProfileService {
     private readonly field: FieldService,
     private readonly privacy: PrivacyService,
     private readonly storage: StorageService,
+    private readonly userContext: UserContextService,
   ) {}
 
   // ═══════ 录入路径 1：用户自填 ═══════
 
-  async upsertSelf(userId: string, dto: UpsertProfileDto): Promise<ProfileDto> {
+  /**
+   * 本人创建或更新档案。
+   *
+   * viewer 必须一路传下去：toDto 靠它判 isSelf，传 null 会走匿名投影，
+   * 而新建的档案是 DRAFT，匿名看不见——于是"存成功了却返回 404 该会员资料不可见"。
+   * 用户看到的现象是资料保存不上，实际库里已经写进去了，很难查。
+   */
+  async upsertSelf(userId: string, dto: UpsertProfileDto, viewer: AuthUser): Promise<ProfileDto> {
     const existing = await this.prisma.profile.findFirst({
       where: { userId, deletedAt: null },
       include: PROFILE_INCLUDE,
@@ -77,11 +86,14 @@ export class ProfileService {
         source: ProfileSource.SELF,
         matchmakerId: user?.inviteMatchmakerId ?? null,
       });
-      return this.toDto(created.id, null);
+      // 用户上下文缓存里 profileId 还是 null，不清的话接下来 60 秒内
+      // 所有依赖 profileId 的逻辑都以为这人没档案——广场的异性过滤就是这么失效的
+      await this.userContext.invalidate(userId);
+      return this.toDto(created.id, { ...viewer, profileId: created.id });
     }
 
     await this.update(existing, dto, { operatorId: userId, operatorName: '本人' });
-    return this.toDto(existing.id, null);
+    return this.toDto(existing.id, viewer);
   }
 
   /**
@@ -127,7 +139,7 @@ export class ProfileService {
   async createByMatchmaker(
     matchmakerId: string,
     dto: MatchmakerCreateProfileDto,
-    operator: { id: string; name: string },
+    operator: { id: string; name: string; viewer?: AuthUser },
   ): Promise<ProfileDto> {
     if (dto.userId) {
       const taken = await this.prisma.profile.findFirst({
@@ -149,7 +161,10 @@ export class ProfileService {
         reason: '红娘代录后提交审核',
       });
     }
-    return this.toDto(created.id, null);
+    // 关联了账号的话，那个人的上下文缓存也要清，否则他登录后系统仍以为他没档案
+    if (dto.userId) await this.userContext.invalidate(dto.userId);
+    // 同上：红娘代录完要能拿回档案，传 null 会因为档案还没过审而 404
+    return this.toDto(created.id, operator.viewer ?? null);
   }
 
   /** 用户用编号认领红娘代录的档案 */
@@ -666,7 +681,24 @@ export class ProfileService {
   /** C 端广场：只有已通过的，且一律按访客等级脱敏 */
   async listPublic(query: QueryProfileDto, viewer: AuthUser | null): Promise<PageResult<ProfileBriefDto>> {
     const where: Prisma.ProfileWhereInput = { deletedAt: null, status: 'APPROVED' };
-    if (query.gender) where.gender = query.gender;
+
+    // 只看异性，按本人性别自动定，不让用户选。
+    // 相亲场景里"我要看男的还是女的"不是个需要问的问题，问了反而奇怪；
+    // 而且同性档案混在广场里会让人以为系统坏了。
+    // 没建档案的新用户还不知道性别，那就都给看——总比空着强。
+    const self = viewer?.profileId
+      ? await this.prisma.profile.findUnique({
+          where: { id: viewer.profileId },
+          select: { gender: true },
+        })
+      : null;
+
+    if (self) where.gender = self.gender === 'MALE' ? 'FEMALE' : 'MALE';
+    else if (query.gender) where.gender = query.gender;
+
+    // 自己的档案不该出现在广场里
+    if (viewer?.profileId) where.id = { not: viewer.profileId };
+
     if (query.cityCode) where.cityCode = query.cityCode;
     if (query.ageMin != null || query.ageMax != null) {
       const r = ageRangeToBirthdayRange(query.ageMin, query.ageMax);

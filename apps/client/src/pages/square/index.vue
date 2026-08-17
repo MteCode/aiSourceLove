@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onPullDownRefresh, onReachBottom, onShow } from '@dcloudio/uni-app';
 import { reactive, ref } from 'vue';
-import { GENDER_LABEL, Gender, type ProfileBriefDto } from '@yuanqiao/shared';
+import type { ProfileBriefDto } from '@yuanqiao/shared';
 import { profileApi } from '@/api';
 import { useUserStore } from '@/stores/user';
 
@@ -16,9 +16,10 @@ const failed = ref(false);
 const finished = ref(false);
 const filterVisible = ref(false);
 
+// 没有性别筛选：服务端按本人性别只返回异性。
+// 相亲场景里"我要看男的还是女的"不是个需要问的问题。
 const filter = reactive({
   keyword: '',
-  gender: '' as '' | Gender,
   ageMin: undefined as number | undefined,
   ageMax: undefined as number | undefined,
 });
@@ -38,7 +39,6 @@ async function load(reset = false): Promise<void> {
       page: page.value,
       pageSize: 20,
       keyword: filter.keyword || undefined,
-      gender: filter.gender || undefined,
       ageMin: filter.ageMin,
       ageMax: filter.ageMax,
     });
@@ -60,7 +60,6 @@ function applyFilter(): void {
 
 function resetFilter(): void {
   filter.keyword = '';
-  filter.gender = '';
   filter.ageMin = undefined;
   filter.ageMax = undefined;
   applyFilter();
@@ -132,19 +131,6 @@ function goto(url: string): void {
     <view v-if="filterVisible" class="mask" @tap="filterVisible = false">
       <view class="panel" @tap.stop>
         <text class="panel-title">筛选</text>
-
-        <text class="panel-label">性别</text>
-        <view class="chips">
-          <text :class="['chip', { 'chip--on': filter.gender === '' }]" @tap="filter.gender = ''">不限</text>
-          <text
-            v-for="(label, g) in GENDER_LABEL"
-            :key="g"
-            :class="['chip', { 'chip--on': filter.gender === g }]"
-            @tap="filter.gender = g as Gender"
-          >
-            {{ label }}
-          </text>
-        </view>
 
         <text class="panel-label">年龄</text>
         <view class="range">
