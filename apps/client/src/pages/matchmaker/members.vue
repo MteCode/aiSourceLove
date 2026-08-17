@@ -8,6 +8,8 @@ const list = ref<ProfileBriefDto[]>([]);
 const page = ref(1);
 const total = ref(0);
 const loading = ref(false);
+/** 请求失败和「确实没数据」要分开：都显示成空态会把故障说成没结果，很难查 */
+const failed = ref(false);
 const finished = ref(false);
 
 async function load(reset = false): Promise<void> {
@@ -19,12 +21,15 @@ async function load(reset = false): Promise<void> {
   if (finished.value) return;
 
   loading.value = true;
+  failed.value = false;
   try {
     const res = await matchmakerApi.myMembers({ page: page.value, pageSize: 20 });
     list.value = reset ? res.list : [...list.value, ...res.list];
     total.value = res.total;
     finished.value = list.value.length >= res.total;
     page.value += 1;
+  } catch {
+    failed.value = true;
   } finally {
     loading.value = false;
   }
@@ -72,7 +77,8 @@ onReachBottom(() => void load());
       <button class="intro-btn" @tap="createIntro(m.id)">为 TA 牵线</button>
     </view>
 
-    <yq-empty v-if="!list.length && !loading" icon="👥" text="名下还没有会员">
+    <yq-empty v-if="failed" icon="⚠️" text="加载失败，请检查网络后重试" retryable @retry="load(true)" />
+    <yq-empty v-else-if="!list.length && !loading" icon="👥" text="名下还没有会员">
       <text class="tip yq-muted">把你的邀请码分享给会员，注册后会自动归到你名下</text>
     </yq-empty>
     <view v-if="loading" class="loading yq-muted">加载中…</view>
