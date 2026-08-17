@@ -79,6 +79,13 @@ type ProfileWithRelations = Profile & {
  * 任何绕过 project() 直接把 Prisma 实体 return 出去的代码都是数据泄露，
  * code review 必查这一条。
  */
+/** 取前 n 个字做摘要，去掉换行免得在卡片里撑高 */
+function briefText(text: string | null | undefined, n: number): string | null {
+  const t = text?.replace(/\s+/g, ' ').trim();
+  if (!t) return null;
+  return t.length > n ? `${t.slice(0, n)}…` : t;
+}
+
 @Injectable()
 export class PrivacyService {
   private readonly logger = new Logger(PrivacyService.name);
@@ -299,6 +306,13 @@ export class PrivacyService {
       education: profile.education as ProfileBriefDto['education'],
       cityName: profile.cityName,
       occupation: profile.occupation,
+      // 以下四项 + 摘要构成「资料卡」的主体。照片不展示时，这些就是用户的决策依据
+      maritalStatus: profile.maritalStatus as ProfileBriefDto['maritalStatus'],
+      childrenStatus: profile.childrenStatus as ProfileBriefDto['childrenStatus'],
+      houseStatus: profile.houseStatus as ProfileBriefDto['houseStatus'],
+      carStatus: profile.carStatus as ProfileBriefDto['carStatus'],
+      // 服务端截断：自我介绍能到两千字，列表一页 20 条全传过去是几十 KB 无用流量
+      introBrief: briefText(profile.introduction, 60),
       // 没权限一律不给图；有照片但看不到时置 avatarMasked，
       // 前端据此显示"照片需联系红娘"，而不是显示成这个人没传照片
       avatarUrl: primary && showOriginal ? this.storage.toAbsoluteUrl(primary.url) : null,

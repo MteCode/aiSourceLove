@@ -247,6 +247,13 @@ export interface ProfileBriefDto {
   education: Education | null;
   cityName: string | null;
   occupation: string | null;
+  /** 以下四项是「资料卡」的主要内容——照片不展示时，这些标签就是用户的决策依据 */
+  maritalStatus: MaritalStatus;
+  childrenStatus: ChildrenStatus;
+  houseStatus: HouseStatus | null;
+  carStatus: CarStatus | null;
+  /** 自我介绍摘要。服务端截断，避免列表页每条都传两千字 */
+  introBrief: string | null;
   avatarUrl: string | null;
   /** true = 有头像但你看不到，需联系红娘 */
   avatarMasked: boolean;

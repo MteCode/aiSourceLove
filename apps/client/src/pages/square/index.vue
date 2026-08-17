@@ -110,8 +110,9 @@ function goto(url: string): void {
       <text>你的资料还未通过审核，通过后才会出现在广场 ›</text>
     </view>
 
-    <view class="grid">
-      <view v-for="p in list" :key="p.id" class="col">
+    <!-- 单列而不是两列：资料卡靠信息密度取胜，两列一行放不下标签和摘要 -->
+    <view class="list">
+      <view v-for="p in list" :key="p.id" class="item">
         <yq-profile-card :profile="p" />
       </view>
     </view>
@@ -192,16 +193,12 @@ function goto(url: string): void {
   font-size: 24rpx;
 }
 
-.grid {
-  display: flex;
-  flex-wrap: wrap;
-  padding: 20rpx 10rpx;
+.list {
+  padding: 20rpx;
 }
 
-.col {
-  width: 50%;
-  padding: 0 10rpx 20rpx;
-  box-sizing: border-box;
+.item + .item {
+  margin-top: 20rpx;
 }
 
 .loading {
