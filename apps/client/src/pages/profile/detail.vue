@@ -171,7 +171,7 @@ function copy(text: string): void {
 
       <!-- 基本信息 -->
       <yq-card title="基本信息">
-        <view class="row"><text class="k">真实姓名</text><text class="v">{{ plain(profile.realName, '未公开') }}</text></view>
+        <view class="row"><text class="k">真实姓名</text><text class="v">{{ plain(profile.realName) }}</text></view>
         <view class="row"><text class="k">性别</text><text class="v">{{ GENDER_LABEL[profile.gender] }}</text></view>
         <view class="row"><text class="k">年龄</text><text class="v">{{ profile.age }} 岁</text></view>
         <view class="row"><text class="k">身高</text><text class="v">{{ profile.heightCm ? profile.heightCm + ' cm' : '未填写' }}</text></view>
@@ -187,9 +187,9 @@ function copy(text: string): void {
       <!-- 工作学业 -->
       <yq-card title="工作学业">
         <view class="row"><text class="k">学历</text><text class="v">{{ profile.education ? EDUCATION_LABEL[profile.education] : '未填写' }}</text></view>
-        <view class="row"><text class="k">学校</text><text class="v">{{ plain(profile.school, '未公开') }}</text></view>
+        <view class="row"><text class="k">学校</text><text class="v">{{ plain(profile.school) }}</text></view>
         <view class="row"><text class="k">职业</text><text class="v">{{ profile.occupation || '未填写' }}</text></view>
-        <view class="row"><text class="k">单位</text><text class="v">{{ plain(profile.company, '未公开') }}</text></view>
+        <view class="row"><text class="k">单位</text><text class="v">{{ plain(profile.company) }}</text></view>
         <view class="row">
           <text class="k">年收入</text>
           <text class="v">

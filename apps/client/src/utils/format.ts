@@ -42,6 +42,13 @@ export function formatIncome(yuan: number | null | undefined): string {
  * 脱敏字段的展示值。
  * 没权限的字段后端下发的是 MaskedValue，直接渲染会变成 [object Object]。
  */
+/**
+ * 展示一个可能被脱敏的值。
+ *
+ * fallback 只在「值真的为空」时才用得上——被锁的字段走 isMaskedValue 分支，
+ * 返回的是打码预览。所以 fallback 永远该是"未填写"这种意思，
+ * 不要传"未公开"：那会把"老库没填"说成"平台不给你看"，两回事。
+ */
 export function plain(v: unknown, fallback = '未填写'): string {
   if (v == null || v === '') return fallback;
   if (isMaskedValue(v)) return v.preview || v.hint || '******';
