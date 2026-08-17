@@ -16,8 +16,8 @@ import { fileURLToPath } from 'node:url';
 
 const OUT = join(dirname(fileURLToPath(import.meta.url)), '../src/static/tabbar');
 
-const NORMAL = '#9aa0ab';
-const ACTIVE = '#e05a7d';
+const NORMAL = '#6b7280';
+const ACTIVE = '#5eead4';
 const SIZE = 81;
 
 /** 线性图标，stroke 统一 5.5，圆头圆角，视觉重量才一致 */

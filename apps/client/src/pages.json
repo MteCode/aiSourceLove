@@ -36,16 +36,16 @@
     { "path": "pages/matchmaker/commission", "style": { "navigationBarTitleText": "我的收益" } }
   ],
   "globalStyle": {
-    "navigationBarTextStyle": "black",
-    "navigationBarTitleText": "缘桥",
-    "navigationBarBackgroundColor": "#ffffff",
-    "backgroundColor": "#f5f6f8"
+    "navigationBarTextStyle": "white",
+    "navigationBarTitleText": "同频",
+    "navigationBarBackgroundColor": "#070a12",
+    "backgroundColor": "#070a12"
   },
   "tabBar": {
-    "color": "#909399",
-    "selectedColor": "#e05a7d",
-    "backgroundColor": "#ffffff",
-    "borderStyle": "white",
+    "color": "#6b7280",
+    "selectedColor": "#5eead4",
+    "backgroundColor": "#0b0f1a",
+    "borderStyle": "black",
     "list": [
       { "pagePath": "pages/square/index", "text": "广场",
           "iconPath": "static/tabbar/square.png",
