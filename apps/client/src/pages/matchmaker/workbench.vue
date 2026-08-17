@@ -152,7 +152,7 @@ function gotoTab(url: string): void {
   justify-content: space-between;
   margin: 20rpx;
   padding: 28rpx;
-  background: linear-gradient(135deg, #e05a7d 0%, #e87492 100%);
+  background: linear-gradient(135deg, $yq-primary 0%, $yq-primary-2 100%);
   border-radius: $yq-radius;
 }
 
@@ -177,8 +177,8 @@ function gotoTab(url: string): void {
   height: 64rpx;
   line-height: 64rpx;
   font-size: 26rpx;
-  color: #e05a7d;
-  background: #fff;
+  color: $yq-primary;
+  background: $yq-surface;
   border-radius: 32rpx;
 
   &::after { border: none; }
@@ -187,8 +187,8 @@ function gotoTab(url: string): void {
 .head {
   display: flex;
   padding: 40rpx 20rpx;
-  background: linear-gradient(120deg, #e05a7d, #f0a0b6);
-  color: #fff;
+  background: linear-gradient(120deg, $yq-primary, $yq-primary-2);
+  color: $yq-on-primary;
 }
 
 .head-item {
@@ -250,7 +250,7 @@ function gotoTab(url: string): void {
 .money-btn {
   margin-top: 24rpx;
   background: $yq-primary;
-  color: #fff;
+  color: $yq-on-primary;
   border-radius: 40rpx;
   font-size: 28rpx;
   line-height: 76rpx;
@@ -261,7 +261,7 @@ function gotoTab(url: string): void {
   flex-wrap: wrap;
   margin: 20rpx;
   padding: 20rpx 0;
-  background: #fff;
+  background: $yq-surface;
   border-radius: $yq-radius;
 }
 

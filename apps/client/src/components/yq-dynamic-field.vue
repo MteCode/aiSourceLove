@@ -161,7 +161,7 @@ function goto(url: string): void {
 
     <!-- 是否 -->
     <view v-else-if="field.type === 'BOOLEAN'" class="control control--switch">
-      <switch :checked="!!modelValue" color="#e05a7d" @change="onBoolean" />
+      <switch :checked="!!modelValue" color="$yq-primary" @change="onBoolean" />
     </view>
 
     <!-- 数值区间 -->
@@ -255,7 +255,7 @@ function goto(url: string): void {
 }
 
 .placeholder {
-  color: #bbb;
+  color: $yq-text-muted;
 }
 
 .arrow {

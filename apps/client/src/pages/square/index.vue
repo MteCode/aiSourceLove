@@ -167,7 +167,7 @@ function goto(url: string): void {
   display: flex;
   align-items: center;
   padding: 20rpx;
-  background: #fff;
+  background: $yq-surface;
 }
 
 .search {
@@ -187,7 +187,7 @@ function goto(url: string): void {
 .notice {
   margin: 20rpx 20rpx 0;
   padding: 20rpx 24rpx;
-  background: #fdf6ec;
+  background: rgba(251, 191, 36, 0.12);
   border-radius: 12rpx;
   color: $yq-warning;
   font-size: 24rpx;
@@ -220,7 +220,7 @@ function goto(url: string): void {
   right: 0;
   bottom: 0;
   padding: 32rpx 32rpx calc(32rpx + env(safe-area-inset-bottom));
-  background: #fff;
+  background: $yq-surface;
   border-radius: 24rpx 24rpx 0 0;
 }
 
@@ -292,7 +292,7 @@ function goto(url: string): void {
 
 .pbtn--primary {
   background: $yq-primary;
-  color: #fff;
+  color: $yq-on-primary;
 }
 
 .pbtn--plain {

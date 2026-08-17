@@ -39,8 +39,8 @@ defineEmits<{ retry: [] }>();
   margin-top: 20rpx;
   padding: 12rpx 40rpx;
   font-size: 26rpx;
-  color: #e05a7d;
-  border: 1rpx solid #e05a7d;
+  color: $yq-primary;
+  border: 1rpx solid $yq-primary;
   border-radius: 32rpx;
 }
 </style>

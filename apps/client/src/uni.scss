@@ -1,13 +1,40 @@
-/* 全局设计变量。uni-app 会自动把这个文件注入每个组件的 scss 作用域 */
+/**
+ * 全局设计变量。uni-app 会自动注入每个组件的 scss 作用域。
+ *
+ * 深色科技风。弃用粉色的原因：粉色渐变是婚恋产品的标配，
+ * 也正因为标配才显廉价。青紫双色是当下科技/AI 产品的通用语汇，
+ * 而我们核心确实是一套匹配算法，用它不算浮夸。
+ *
+ * 改颜色只改这里。页面里不要再写死颜色值——写死一次，
+ * 下回换主题就得满仓库找。
+ */
 
-$yq-primary: #e05a7d;
-$yq-primary-light: #fdeef2;
-$yq-bg: #f5f6f8;
-$yq-border: #ebeef5;
-$yq-text: #303133;
-$yq-text-secondary: #909399;
+/* ── 主色：青 → 紫，和登录页背景那两条相向的曲线同源 ── */
+$yq-primary: #5eead4;
+$yq-primary-2: #818cf8;
+/* 主色的低透明度底，用于标签、选中态这种需要"淡淡一层"的地方 */
+$yq-primary-light: rgba(94, 234, 212, 0.12);
+
+/* ── 层次：底 < 面 < 浮起 ── */
+/* 页面最底层 */
+$yq-bg: #070a12;
+/* 卡片、输入框等浮在页面之上的面。深色下用亮度区分层次，不用阴影 */
+$yq-surface: #10141f;
+/* 再浮一层，比如卡片内的嵌套块 */
+$yq-surface-2: #171c2b;
+$yq-border: rgba(255, 255, 255, 0.08);
+
+/* ── 文字 ── */
+$yq-text: #e8ecf4;
+$yq-text-secondary: rgba(232, 236, 244, 0.5);
+$yq-text-muted: rgba(232, 236, 244, 0.32);
+/* 主按钮上的文字：主色是亮青，文字必须压深才够对比 */
+$yq-on-primary: #070a12;
+
 $yq-radius: 16rpx;
 
-$yq-success: #67c23a;
-$yq-warning: #e6a23c;
-$yq-danger: #f56c6c;
+/* ── 语义色：深色底下饱和度要降，原来的亮绿亮红会刺眼 ── */
+$yq-success: #4ade80;
+$yq-warning: #fbbf24;
+$yq-danger: #f87171;
+$yq-info: #818cf8;

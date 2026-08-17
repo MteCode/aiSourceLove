@@ -228,19 +228,19 @@ onShow(load);
   margin: 20rpx;
   padding: 24rpx;
   border-radius: $yq-radius;
-  background: #fff;
+  background: $yq-surface;
 }
 
 .status--PENDING {
-  background: #fdf6ec;
+  background: rgba(251, 191, 36, 0.12);
 }
 
 .status--REJECTED {
-  background: #fef0f0;
+  background: rgba(248, 113, 113, 0.12);
 }
 
 .status--APPROVED {
-  background: #f0f9eb;
+  background: rgba(74, 222, 128, 0.12);
 }
 
 .status-text {
@@ -277,7 +277,7 @@ onShow(load);
 .field-rejected {
   margin: 0 -12rpx;
   padding: 0 12rpx;
-  background: #fef0f0;
+  background: rgba(248, 113, 113, 0.12);
   border-radius: 8rpx;
 }
 
@@ -313,15 +313,15 @@ onShow(load);
 
 .btn--primary {
   background: $yq-primary;
-  color: #fff;
+  color: $yq-on-primary;
 }
 
 .btn--primary[disabled] {
-  background: #f0c3ce;
+  background: $yq-surface-2;
 }
 
 .btn--plain {
-  background: #fff;
+  background: $yq-surface;
   color: $yq-text;
   border: 1rpx solid $yq-border;
 }

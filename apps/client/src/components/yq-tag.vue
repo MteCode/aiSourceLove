@@ -27,22 +27,22 @@ withDefaults(
 }
 
 .tag--success {
-  background: #f0f9eb;
+  background: rgba(74, 222, 128, 0.12);
   color: $yq-success;
 }
 
 .tag--warning {
-  background: #fdf6ec;
+  background: rgba(251, 191, 36, 0.12);
   color: $yq-warning;
 }
 
 .tag--danger {
-  background: #fef0f0;
+  background: rgba(248, 113, 113, 0.12);
   color: $yq-danger;
 }
 
 .tag--info {
-  background: #f4f4f5;
+  background: rgba(255, 255, 255, 0.07);
   color: $yq-text-secondary;
 }
 

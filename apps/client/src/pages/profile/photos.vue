@@ -160,7 +160,7 @@ function tagType(status: string): 'success' | 'warning' | 'danger' {
   width: 210rpx;
   height: 210rpx;
   background: $yq-bg;
-  border: 2rpx dashed #dcdfe6;
+  border: 2rpx dashed $yq-border;
   border-radius: 12rpx;
   box-sizing: border-box;
 }

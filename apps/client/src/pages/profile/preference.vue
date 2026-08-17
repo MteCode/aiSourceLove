@@ -222,11 +222,11 @@ onShow(load);
     <yq-card title="物质条件">
       <view class="switch-row">
         <text>要求有房</text>
-        <switch :checked="form.requireHouse" color="#e05a7d" @change="onHouseChange" />
+        <switch :checked="form.requireHouse" color="$yq-primary" @change="onHouseChange" />
       </view>
       <view class="switch-row">
         <text>要求有车</text>
-        <switch :checked="form.requireCar" color="#e05a7d" @change="onCarChange" />
+        <switch :checked="form.requireCar" color="$yq-primary" @change="onCarChange" />
       </view>
     </yq-card>
 
@@ -347,7 +347,7 @@ onShow(load);
 
 .btn {
   background: $yq-primary;
-  color: #fff;
+  color: $yq-on-primary;
   border-radius: 44rpx;
   font-size: 30rpx;
   line-height: 88rpx;

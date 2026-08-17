@@ -175,7 +175,7 @@ function label(p?: ProfileBriefDto): string {
 }
 
 .placeholder {
-  color: #bbb;
+  color: $yq-text-muted;
 }
 
 .arrow {
@@ -243,7 +243,7 @@ function label(p?: ProfileBriefDto): string {
 }
 
 .bar-fill--blue {
-  background: #409eff;
+  background: $yq-info;
 }
 
 .list {
@@ -303,7 +303,7 @@ function label(p?: ProfileBriefDto): string {
 
 .btn {
   background: $yq-primary;
-  color: #fff;
+  color: $yq-on-primary;
   border-radius: 44rpx;
   font-size: 30rpx;
   line-height: 88rpx;

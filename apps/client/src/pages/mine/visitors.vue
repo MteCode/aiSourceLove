@@ -62,7 +62,7 @@ function goto(url: string): void {
   align-items: center;
   margin: 16rpx 20rpx;
   padding: 20rpx;
-  background: #fff;
+  background: $yq-surface;
   border-radius: $yq-radius;
 }
 
@@ -111,7 +111,7 @@ function goto(url: string): void {
   margin-top: 30rpx;
   padding: 0 60rpx;
   background: $yq-primary;
-  color: #fff;
+  color: $yq-on-primary;
   border-radius: 40rpx;
   font-size: 28rpx;
   line-height: 76rpx;

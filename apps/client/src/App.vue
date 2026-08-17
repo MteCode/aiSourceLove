@@ -41,12 +41,17 @@ page {
 .yq-card {
   margin: 20rpx;
   padding: 24rpx;
-  background: #fff;
+  background: $yq-surface;
+  border: 1rpx solid $yq-border;
   border-radius: $yq-radius;
 }
 
 .yq-muted {
   color: $yq-text-secondary;
+}
+
+.yq-dim {
+  color: $yq-text-muted;
 }
 
 .yq-danger {

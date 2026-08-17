@@ -159,8 +159,8 @@ function goto(url: string): void {
 <style lang="scss" scoped>
 .banner {
   padding: 50rpx 40rpx;
-  background: linear-gradient(120deg, #e05a7d, #f0a0b6);
-  color: #fff;
+  background: linear-gradient(120deg, $yq-primary, $yq-primary-2);
+  color: $yq-on-primary;
 }
 
 .banner-title {
@@ -187,7 +187,7 @@ function goto(url: string): void {
   width: 210rpx;
   margin: 0 8rpx;
   padding: 28rpx 16rpx;
-  background: #fff;
+  background: $yq-surface;
   border: 2rpx solid transparent;
   border-radius: 16rpx;
   text-align: center;
@@ -205,7 +205,7 @@ function goto(url: string): void {
   right: -2rpx;
   padding: 4rpx 14rpx;
   background: $yq-primary;
-  color: #fff;
+  color: $yq-on-primary;
   border-radius: 0 16rpx 0 16rpx;
   font-size: 20rpx;
 }
@@ -295,7 +295,7 @@ function goto(url: string): void {
   display: flex;
   align-items: center;
   padding: 20rpx 30rpx calc(20rpx + env(safe-area-inset-bottom));
-  background: #fff;
+  background: $yq-surface;
   box-shadow: 0 -2rpx 12rpx rgba(0, 0, 0, 0.05);
 }
 
@@ -317,7 +317,7 @@ function goto(url: string): void {
 .pay-btn {
   width: 280rpx;
   background: $yq-primary;
-  color: #fff;
+  color: $yq-on-primary;
   border-radius: 44rpx;
   font-size: 30rpx;
   line-height: 84rpx;

@@ -103,7 +103,7 @@ function previewPhoto(url: string): void {
 
     <template v-if="profile">
       <!-- 相册 -->
-      <swiper v-if="photos.length" class="gallery" indicator-dots indicator-active-color="#e05a7d" circular>
+      <swiper v-if="photos.length" class="gallery" indicator-dots indicator-active-color="$yq-primary" circular>
         <swiper-item v-for="p in photos" :key="p.id">
           <image class="photo" :src="p.url" mode="aspectFill" @tap="previewPhoto(p.url)" />
         </swiper-item>
@@ -213,7 +213,7 @@ function previewPhoto(url: string): void {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(160deg, #fdeef2 0%, #eef2fb 100%);
+  background: linear-gradient(160deg, $yq-primary-light 0%, #eef2fb 100%);
 }
 
 .lock-icon {
@@ -375,7 +375,7 @@ function previewPhoto(url: string): void {
 
 .btn--primary {
   background: $yq-primary;
-  color: #fff;
+  color: $yq-on-primary;
 }
 
 .lock-link {
@@ -388,7 +388,7 @@ function previewPhoto(url: string): void {
   margin-top: 30rpx;
   padding: 0 60rpx;
   background: $yq-primary;
-  color: #fff;
+  color: $yq-on-primary;
   border-radius: 40rpx;
   font-size: 28rpx;
   line-height: 76rpx;

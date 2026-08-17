@@ -118,19 +118,19 @@ function goReplace(url: string): void {
   margin: 20rpx;
   padding: 28rpx;
   border-radius: $yq-radius;
-  background: #fff;
+  background: $yq-surface;
 }
 
 .status--PENDING {
-  background: #fdf6ec;
+  background: rgba(251, 191, 36, 0.12);
 }
 
 .status--ACTIVE {
-  background: #f0f9eb;
+  background: rgba(74, 222, 128, 0.12);
 }
 
 .status--SUSPENDED {
-  background: #fef0f0;
+  background: rgba(248, 113, 113, 0.12);
 }
 
 .status-title {
@@ -150,7 +150,7 @@ function goReplace(url: string): void {
 .status-btn {
   margin-top: 20rpx;
   background: $yq-primary;
-  color: #fff;
+  color: $yq-on-primary;
   border-radius: 40rpx;
   font-size: 28rpx;
   line-height: 76rpx;
@@ -211,7 +211,7 @@ function goReplace(url: string): void {
 .btn {
   margin-top: 40rpx;
   background: $yq-primary;
-  color: #fff;
+  color: $yq-on-primary;
   border-radius: 44rpx;
   font-size: 30rpx;
   line-height: 88rpx;

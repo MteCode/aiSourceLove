@@ -85,10 +85,16 @@ function open(id: string): void {
   uni.navigateTo({ url: `/pages/profile/detail?id=${id}` });
 }
 
+/**
+ * 匹配分的颜色档。
+ *
+ * 这里必须写字面量：函数在 TS 里跑，拿不到 SCSS 变量。
+ * 值取自 uni.scss 的深色语义色，改主题时记得同步改这三处。
+ */
 function scoreColor(score: number): string {
-  if (score >= 80) return '#67c23a';
-  if (score >= 60) return '#e6a23c';
-  return '#909399';
+  if (score >= 80) return '#4ade80';
+  if (score >= 60) return '#fbbf24';
+  return 'rgba(232, 236, 244, 0.5)';
 }
 
 onShow(() => {
@@ -183,7 +189,7 @@ function goto(url: string): void {
   align-items: center;
   justify-content: space-between;
   padding: 24rpx 30rpx;
-  background: #fff;
+  background: $yq-surface;
 }
 
 .title {
@@ -206,13 +212,13 @@ function goto(url: string): void {
 
 .ai-toggle--on {
   background: $yq-primary;
-  color: #fff;
+  color: $yq-on-primary;
 }
 
 .item {
   margin: 20rpx;
   padding: 24rpx;
-  background: #fff;
+  background: $yq-surface;
   border-radius: $yq-radius;
 }
 
@@ -307,7 +313,7 @@ function goto(url: string): void {
 }
 
 .bar-fill--blue {
-  background: #409eff;
+  background: $yq-info;
 }
 
 .detail-toggle {
@@ -359,7 +365,7 @@ function goto(url: string): void {
   margin-top: 30rpx;
   padding: 0 60rpx;
   background: $yq-primary;
-  color: #fff;
+  color: $yq-on-primary;
   border-radius: 40rpx;
   font-size: 28rpx;
   line-height: 76rpx;

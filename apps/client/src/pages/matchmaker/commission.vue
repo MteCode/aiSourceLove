@@ -247,8 +247,8 @@ onReachBottom(() => void loadList());
 <style lang="scss" scoped>
 .head {
   padding: 40rpx;
-  background: linear-gradient(120deg, #e05a7d, #f0a0b6);
-  color: #fff;
+  background: linear-gradient(120deg, $yq-primary, $yq-primary-2);
+  color: $yq-on-primary;
   text-align: center;
 }
 
@@ -277,7 +277,7 @@ onReachBottom(() => void loadList());
 .head-btn {
   width: 320rpx;
   margin-top: 30rpx;
-  background: #fff;
+  background: $yq-surface;
   color: $yq-primary;
   border-radius: 40rpx;
   font-size: 28rpx;
@@ -293,7 +293,7 @@ onReachBottom(() => void loadList());
 
 .tabs {
   display: flex;
-  background: #fff;
+  background: $yq-surface;
 }
 
 .tab {
@@ -313,7 +313,7 @@ onReachBottom(() => void loadList());
 .item {
   margin: 16rpx 20rpx;
   padding: 24rpx;
-  background: #fff;
+  background: $yq-surface;
   border-radius: $yq-radius;
 }
 
@@ -359,7 +359,7 @@ onReachBottom(() => void loadList());
   right: 0;
   bottom: 0;
   padding: 32rpx 32rpx calc(32rpx + env(safe-area-inset-bottom));
-  background: #fff;
+  background: $yq-surface;
   border-radius: 24rpx 24rpx 0 0;
 }
 
@@ -422,7 +422,7 @@ onReachBottom(() => void loadList());
 .panel-btn {
   margin-top: 24rpx;
   background: $yq-primary;
-  color: #fff;
+  color: $yq-on-primary;
   border-radius: 44rpx;
   font-size: 30rpx;
   line-height: 88rpx;

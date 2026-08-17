@@ -69,8 +69,8 @@ function goto(url: string): void {
 <style lang="scss" scoped>
 .head {
   padding: 40rpx;
-  background: linear-gradient(120deg, #e05a7d, #f0a0b6);
-  color: #fff;
+  background: linear-gradient(120deg, $yq-primary, $yq-primary-2);
+  color: $yq-on-primary;
 }
 
 .status {
@@ -90,7 +90,7 @@ function goto(url: string): void {
   display: inline-block;
   margin-top: 20rpx;
   padding: 0 40rpx;
-  background: #fff;
+  background: $yq-surface;
   color: $yq-primary;
   border-radius: 32rpx;
   font-size: 26rpx;
@@ -141,7 +141,7 @@ function goto(url: string): void {
   margin-top: 30rpx;
   padding: 0 60rpx;
   background: $yq-primary;
-  color: #fff;
+  color: $yq-on-primary;
   border-radius: 40rpx;
   font-size: 28rpx;
   line-height: 76rpx;

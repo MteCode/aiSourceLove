@@ -77,7 +77,7 @@ function goReplace(url: string): void {
 .btn {
   margin-top: 40rpx;
   background: $yq-primary;
-  color: #fff;
+  color: $yq-on-primary;
   border-radius: 44rpx;
   font-size: 30rpx;
   line-height: 88rpx;

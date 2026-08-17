@@ -90,7 +90,7 @@ function open(id: string): void {
 <style lang="scss" scoped>
 .card {
   padding: 26rpx 24rpx;
-  background: #fff;
+  background: $yq-surface;
   border-radius: $yq-radius;
 }
 

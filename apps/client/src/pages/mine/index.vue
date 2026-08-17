@@ -221,7 +221,7 @@ function goto(url: string): void {
   align-items: center;
   justify-content: center;
   background: $yq-primary;
-  color: #fff;
+  color: $yq-on-primary;
   font-size: 36rpx;
 }
 
@@ -250,15 +250,15 @@ function goto(url: string): void {
   flex-shrink: 0;
   padding: 10rpx 28rpx;
   font-size: 26rpx;
-  color: #fff;
+  color: $yq-on-primary;
   background: $yq-primary;
   border-radius: 30rpx;
 }
 
 .header {
   padding: 50rpx 40rpx;
-  background: linear-gradient(120deg, #e05a7d, #f0a0b6);
-  color: #fff;
+  background: linear-gradient(120deg, $yq-primary, $yq-primary-2);
+  color: $yq-on-primary;
 }
 
 .head-row,
@@ -346,7 +346,7 @@ function goto(url: string): void {
 
 .vip-btn {
   padding: 10rpx 28rpx;
-  background: #f5d9a8;
+  background: $yq-surface-2;
   color: #3a3a44;
   border-radius: 30rpx;
   font-size: 24rpx;

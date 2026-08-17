@@ -152,7 +152,7 @@ onReachBottom(() => void load());
 <style lang="scss" scoped>
 .tabs {
   display: flex;
-  background: #fff;
+  background: $yq-surface;
 }
 
 .tab {
@@ -172,7 +172,7 @@ onReachBottom(() => void load());
 .item {
   margin: 20rpx;
   padding: 24rpx;
-  background: #fff;
+  background: $yq-surface;
   border-radius: $yq-radius;
 }
 

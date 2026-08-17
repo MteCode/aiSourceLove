@@ -200,8 +200,8 @@ function openProfile(): void {
   justify-content: center;
   width: 40rpx;
   height: 40rpx;
-  background: #fff;
-  border: 2rpx solid #dcdfe6;
+  background: $yq-surface;
+  border: 2rpx solid $yq-border;
   border-radius: 50%;
   color: #fff;
   font-size: 22rpx;
@@ -230,7 +230,7 @@ function openProfile(): void {
   left: 50%;
   width: 100%;
   height: 2rpx;
-  background: #dcdfe6;
+  background: $yq-surface-2;
 }
 
 .step-line--done {
@@ -380,7 +380,7 @@ function openProfile(): void {
   display: flex;
   gap: 20rpx;
   padding: 20rpx 30rpx calc(20rpx + env(safe-area-inset-bottom));
-  background: #fff;
+  background: $yq-surface;
   box-shadow: 0 -2rpx 12rpx rgba(0, 0, 0, 0.05);
 }
 
@@ -393,7 +393,7 @@ function openProfile(): void {
 
 .abtn--primary {
   background: $yq-primary;
-  color: #fff;
+  color: $yq-on-primary;
 }
 
 .abtn--plain {

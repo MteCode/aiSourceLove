@@ -104,7 +104,7 @@ onReachBottom(() => void load());
 .item {
   margin: 20rpx;
   padding: 24rpx;
-  background: #fff;
+  background: $yq-surface;
   border-radius: $yq-radius;
 }
 
@@ -172,7 +172,7 @@ onReachBottom(() => void load());
   width: 200rpx;
   margin: 0;
   background: $yq-primary;
-  color: #fff;
+  color: $yq-on-primary;
   border-radius: 32rpx;
   font-size: 26rpx;
   line-height: 64rpx;
