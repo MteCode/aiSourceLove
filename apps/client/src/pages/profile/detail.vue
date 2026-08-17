@@ -8,7 +8,6 @@ import {
   GENDER_LABEL,
   HOUSE_LABEL,
   MARITAL_LABEL,
-  VisibilityLevel,
   type ProfileDto,
 } from '@yuanqiao/shared';
 import { BENEFIT_EXHAUSTED, ApiError, profileApi } from '@/api';
@@ -28,7 +27,6 @@ import { confirm, hideLoading, loading, toast } from '@/utils/ui';
 const user = useUserStore();
 const id = ref('');
 const profile = ref<ProfileDto | null>(null);
-const unlocking = ref(false);
 const failed = ref('');
 
 const photos = computed(() => profile.value?.photos ?? []);
@@ -44,14 +42,7 @@ const birthdayText = computed(() => {
   if (!raw) return '未填写';
   return p.birthdayPrecision === 'YEAR' ? `${String(raw).slice(0, 4)} 年` : String(raw).slice(0, 10);
 });
-const contactLocked = computed(
-  () => isMaskedValue(profile.value?.phone) || isMaskedValue(profile.value?.wechat),
-);
 
-/** 已经能看到联系方式说明解锁过了（或是牵线成功自动解锁的） */
-const unlocked = computed(
-  () => !!profile.value && profile.value.viewerLevel >= VisibilityLevel.UNLOCKED,
-);
 
 onLoad(async (options) => {
   id.value = options?.id ?? '';
@@ -83,26 +74,6 @@ async function load(): Promise<void> {
   }
 }
 
-async function unlockContact(): Promise<void> {
-  if (unlocking.value) return;
-  if (!(await confirm('解锁后可查看 TA 的手机号和微信，将消耗一次解锁次数。确定吗？', '解锁联系方式'))) return;
-
-  unlocking.value = true;
-  try {
-    profile.value = await profileApi.unlockContact(id.value);
-    toast('已解锁', 'success');
-  } catch (e) {
-    const err = e as ApiError;
-    if (err.code === BENEFIT_EXHAUSTED) {
-      const go = await promptUpgrade(err.message, '解锁次数不足');
-      if (go) uni.navigateTo({ url: '/pages/vip/index' });
-    } else {
-      toast(err.message || '解锁失败');
-    }
-  } finally {
-    unlocking.value = false;
-  }
-}
 
 /** 照片和联系方式都走红娘，所以这里不引导开通会员，直接指向红娘 */
 function askMatchmaker(): void {
@@ -120,9 +91,6 @@ function previewPhoto(url: string): void {
   uni.previewImage({ urls: photos.value.map((p) => p.url), current: url });
 }
 
-function copy(text: string): void {
-  uni.setClipboardData({ data: text, success: () => toast('已复制') });
-}
 
 // 支付未开时 goVip 会给替代路径（找红娘），不会跳到用不了的页面
 </script>
@@ -171,7 +139,6 @@ function copy(text: string): void {
 
       <!-- 基本信息 -->
       <yq-card title="基本信息">
-        <view class="row"><text class="k">真实姓名</text><text class="v">{{ plain(profile.realName) }}</text></view>
         <view class="row"><text class="k">性别</text><text class="v">{{ GENDER_LABEL[profile.gender] }}</text></view>
         <view class="row"><text class="k">年龄</text><text class="v">{{ profile.age }} 岁</text></view>
         <view class="row"><text class="k">身高</text><text class="v">{{ profile.heightCm ? profile.heightCm + ' cm' : '未填写' }}</text></view>
@@ -230,38 +197,10 @@ function copy(text: string): void {
         </view>
       </yq-card>
 
-      <!-- 联系方式：付费墙 -->
-      <yq-card title="联系方式">
-        <template v-if="!contactLocked">
-          <view class="row">
-            <text class="k">手机号</text>
-            <view class="contact">
-              <text class="v">{{ plain(profile.phone, '未填写') }}</text>
-              <text v-if="profile.phone" class="copy" @tap="copy(String(profile.phone))">复制</text>
-            </view>
-          </view>
-          <view class="row">
-            <text class="k">微信</text>
-            <view class="contact">
-              <text class="v">{{ plain(profile.wechat, '未填写') }}</text>
-              <text v-if="profile.wechat" class="copy" @tap="copy(String(profile.wechat))">复制</text>
-            </view>
-          </view>
-          <text v-if="unlocked" class="yq-muted note">已解锁。请文明沟通，骚扰行为会被封号。</text>
-        </template>
-
-        <view v-else class="locked">
-          <text class="lock-icon">🔒</text>
-          <text class="lock-text">{{ plain(profile.phone, '联系方式未公开') }}</text>
-          <text class="lock-desc yq-muted">
-            解锁后可直接联系 TA。也可以等红娘牵线成功——那样双方会自动互开联系方式。
-          </text>
-          <button class="btn btn--primary" :disabled="unlocking" @tap="unlockContact">
-            消耗一次解锁次数查看
-          </button>
-          <text class="lock-link" @tap="goVip">还没有解锁次数？去开通会员 ›</text>
-        </view>
-      </yq-card>
+      <!--
+        联系方式不在这里展示。业务规则：照片和联系方式都走红娘，
+        不做站内解锁。想联系走"我的 → 我的红娘"。
+      -->
 
       <view class="bottom-space" />
     </template>
