@@ -12,6 +12,10 @@
       "minified": true
     },
     "usingComponents": true,
+    // 组件按需注入：只加载当前页面用到的自定义组件，不是一次性全注入。
+    // 微信上传时会检查这一项，没开会被判"未通过"；
+    // 对启动速度也是实打实的优化——页面越多差别越明显。
+    "lazyCodeLoading": "requiredComponents",
     "permission": {},
     "requiredPrivateInfos": []
   },
