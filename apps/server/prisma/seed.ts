@@ -85,7 +85,7 @@ const FIELD_GROUPS = [
 
 type FieldSeed = {
   code: string; label: string; type: string; group: string;
-  visibility: number; isCore: boolean; required?: boolean;
+  visibility: number; isCore: boolean; required?: boolean; enabled?: boolean;
   isPreference?: boolean; weightKey?: string; sort: number;
   options?: { value: string; label: string; score?: number }[];
   placeholder?: string; helpText?: string;
@@ -94,7 +94,9 @@ type FieldSeed = {
 
 const FIELDS: FieldSeed[] = [
   // ── 基本信息（isCore=映射 Profile 固定列）──
-  { code: 'realName', label: '真实姓名', type: 'TEXT', group: 'basic', visibility: 3, isCore: true, required: true, sort: 1, maxLength: 20, helpText: '仅红娘和已解锁的人可见，列表页显示为「张*」' },
+  // 真实姓名停用：业务上姓名不展示也不由会员自填，红娘线下核实时自己录。
+  // 用 enabled 关而不是删掉这条——留着字段定义，运营在后台点一下就能开回来。
+  { code: 'realName', label: '真实姓名', type: 'TEXT', group: 'basic', visibility: 4, isCore: true, required: false, enabled: false, sort: 1, maxLength: 20, helpText: '仅红娘可见' },
   { code: 'nickname', label: '昵称', type: 'TEXT', group: 'basic', visibility: 0, isCore: true, sort: 2, maxLength: 20 },
   { code: 'gender', label: '性别', type: 'SELECT', group: 'basic', visibility: 0, isCore: true, required: true, sort: 3, options: [{ value: 'MALE', label: '男' }, { value: 'FEMALE', label: '女' }] },
   { code: 'birthday', label: '出生日期', type: 'DATE', group: 'basic', visibility: 1, isCore: true, required: true, sort: 4, helpText: '列表展示年龄' },
@@ -134,7 +136,7 @@ const FIELDS: FieldSeed[] = [
   ] },
 
   // ── 联系方式（命门，默认解锁后才可见）──
-  { code: 'phone', label: '手机号', type: 'TEXT', group: 'contact', visibility: 3, isCore: true, required: true, sort: 1, helpText: '未解锁的人只能看到 138****8888' },
+  { code: 'phone', label: '手机号', type: 'TEXT', group: 'contact', visibility: 3, isCore: true, required: true, sort: 1, helpText: '仅红娘可见，不对其他会员展示' },
   { code: 'wechat', label: '微信号', type: 'TEXT', group: 'contact', visibility: 3, isCore: true, sort: 2 },
 
   // ── 补充信息（EAV，运营可随时增删，不用改表不用发版）──
@@ -362,7 +364,8 @@ async function seedFields() {
       maxValue: f.maxValue,
       maxLength: f.maxLength,
       sort: f.sort,
-      enabled: true,
+      // 尊重字段上的开关：写死 true 的话，停用某个字段的配置永远生效不了
+      enabled: f.enabled ?? true,
     };
     await prisma.fieldDef.upsert({
       where: { code: f.code },
